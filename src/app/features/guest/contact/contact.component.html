@@ -1,0 +1,67 @@
+<section class="guest-page guest-contact">
+  <section class="guest-dark-hero">
+    <div class="guest-container">
+      <p class="guest-kicker">Contact</p>
+      <h1 class="guest-heading">Talk to the team behind the platform.</h1>
+      <p class="guest-lead">
+        Use this form for support, moderation questions, and platform feedback. The section is intentionally full-width so it reads
+        like a page, not a floating card.
+      </p>
+    </div>
+  </section>
+
+  <section class="guest-section alt">
+    <div class="guest-container contact-layout">
+      <article class="guest-card contact-info">
+        <h2>Need help?</h2>
+        <p>
+          Reach out if you need support with your account, moderation behavior, access problems, or questions about the community rules.
+        </p>
+        <ul>
+          <li>General support</li>
+          <li>Moderation questions</li>
+          <li>Appeals and account status</li>
+        </ul>
+      </article>
+
+      <section class="guest-card contact-form-card">
+        <header class="contact-header">
+          <div>
+            <h2>Send a message</h2>
+            <p>We will reply by email.</p>
+          </div>
+          <span class="contact-pill">Support</span>
+        </header>
+
+        <form [formGroup]="form" (ngSubmit)="submit()">
+          <label>
+            Your name
+            <input type="text" formControlName="name" autocomplete="name">
+          </label>
+
+          <label>
+            Email
+            <input type="email" formControlName="email" autocomplete="email">
+          </label>
+
+          <label>
+            Subject
+            <input type="text" formControlName="subject">
+          </label>
+
+          <label>
+            Message
+            <textarea formControlName="message" maxlength="2000"></textarea>
+          </label>
+
+          <button type="submit" [disabled]="isSubmitting">
+            {{ isSubmitting ? 'Sending...' : 'Send message' }}
+          </button>
+        </form>
+
+        <p *ngIf="successMessage" class="success">{{ successMessage }}</p>
+        <p *ngIf="errorMessage" class="error">{{ errorMessage }}</p>
+      </section>
+    </div>
+  </section>
+</section>

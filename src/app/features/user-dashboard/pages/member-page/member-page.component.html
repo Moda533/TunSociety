@@ -1,0 +1,59 @@
+<section class="member-page">
+  <p class="hint" *ngIf="isLoading">Loading member profile...</p>
+  <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+  <ng-container *ngIf="member as currentMember">
+    <article class="member-hero">
+      <div class="member-cover"></div>
+      <div class="member-hero-body">
+        <span class="member-avatar" [style.background-image]="'url(' + getMemberAvatarUrl(currentMember) + ')'">
+          {{ getMemberAvatarUrl(currentMember) ? '' : memberInitial }}
+        </span>
+        <div class="member-copy">
+          <h1>{{ currentMember.displayName }}</h1>
+          <p>{{ currentMember.role }}</p>
+          <small>{{ currentMember.email }}</small>
+        </div>
+
+        <div class="member-actions">
+          <button type="button" class="ghost" (click)="openSearchResults()">Back to results</button>
+          <a routerLink="/dashboard/messenger">Open messenger</a>
+          <button type="button" (click)="sendFriendRequest()" [disabled]="isSendingRequest">
+            {{ isSendingRequest ? 'Sending...' : 'Send friend request' }}
+          </button>
+        </div>
+      </div>
+    </article>
+
+    <p class="hint" *ngIf="actionMessage">{{ actionMessage }}</p>
+
+    <section class="member-sections">
+      <article class="member-card">
+        <h2>Profile summary</h2>
+        <p>This member can be discovered from search results and opened directly from the header suggestion dropdown.</p>
+        <ul>
+          <li>Role: {{ currentMember.role }}</li>
+          <li>Email: {{ currentMember.email }}</li>
+        </ul>
+      </article>
+
+      <article class="member-card">
+        <h2>Recent visible posts</h2>
+
+        <div class="empty-card" *ngIf="!memberPosts.length">
+          <strong>No visible posts yet.</strong>
+          <p>When this member publishes public or visible posts, they will appear here.</p>
+        </div>
+
+        <button type="button" class="member-post" *ngFor="let post of memberPosts; trackBy: trackByPostId" (click)="openFeedPost(post)">
+          <div>
+            <strong>{{ post.title }}</strong>
+            <span>{{ post.createdAtUtc | date: 'mediumDate' }}</span>
+            <p>{{ post.content }}</p>
+          </div>
+          <span class="member-post-action">Open in feed</span>
+        </button>
+      </article>
+    </section>
+  </ng-container>
+</section>

@@ -1,0 +1,196 @@
+<div class="app-shell">
+  <header class="app-header">
+    <div class="app-header-main">
+      <a class="brand" [routerLink]="isLoggedIn() ? '/dashboard/feed' : '/about'" aria-label="Social home">
+        <span class="brand-mark">S</span>
+        <span class="brand-name">{{ title }}</span>
+      </a>
+
+      <div
+        *ngIf="isLoggedIn()"
+        class="header-search-shell"
+        [class.open]="showSearchDropdown"
+        (click)="onSearchContainerClick($event)">
+        <form class="header-search" aria-label="Search" (ngSubmit)="submitSearch()">
+          <button type="submit" class="search-icon-button" aria-label="Open search results">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="m20 20-3.5-3.5"></path>
+            </svg>
+          </button>
+          <input
+            type="search"
+            [formControl]="searchControl"
+            (focus)="openSearchMenu()"
+            placeholder="Search for posts, friends...">
+        </form>
+
+        <div class="search-dropdown" *ngIf="showSearchDropdown">
+          <div class="search-dropdown-header">
+            <strong>Quick results</strong>
+            <button type="button" class="ghost-link" (click)="submitSearch()">View all</button>
+          </div>
+
+          <p class="search-state" *ngIf="isSearchLoading">Searching...</p>
+
+          <div class="search-suggestion-list" *ngIf="!isSearchLoading && searchSuggestions.length">
+            <button type="button" class="search-suggestion" *ngFor="let suggestion of searchSuggestions" (click)="openSearchSuggestion(suggestion)">
+              <span
+                class="suggestion-icon"
+                [class.suggestion-icon--avatar]="suggestion.kind === 'user'"
+                [class.post]="suggestion.kind === 'post'"
+                [class.event]="suggestion.kind === 'event'"
+                [style.background-image]="suggestion.kind === 'user' ? 'url(' + getSuggestionAvatarUrl(suggestion.id) + ')' : null">
+                {{
+                  suggestion.kind === 'post'
+                    ? 'P'
+                    : suggestion.kind === 'event'
+                      ? 'E'
+                      : ''
+                }}
+              </span>
+              <span class="suggestion-copy">
+                <strong>{{ suggestion.title }}</strong>
+                <small>{{ suggestion.subtitle }}</small>
+                <span *ngIf="suggestion.meta">{{ suggestion.meta }}</span>
+              </span>
+            </button>
+          </div>
+
+          <div class="search-empty" *ngIf="showSearchEmptyState">
+            <strong>No quick results yet.</strong>
+            <p>Press Enter to open the full results page for "{{ searchControl.value.trim() }}".</p>
+          </div>
+        </div>
+      </div>
+
+      <ng-container *ngIf="isLoggedIn(); else guestNav">
+        <div class="header-actions">
+          <div class="me-menu" [class.open]="isMeMenuOpen" (click)="onMeMenuContainerClick($event)">
+            <button type="button" class="profile-button" (click)="toggleMeMenu($event)" aria-label="Open profile menu">
+              <span
+                class="profile-button-avatar"
+                [style.background-image]="'url(' + currentUserAvatarUrl() + ')'">
+              </span>
+            </button>
+
+              <div class="me-popover" *ngIf="isMeMenuOpen">
+              <div class="me-summary">
+                <span class="me-avatar me-avatar-large me-avatar-image" [style.background-image]="'url(' + currentUserAvatarUrl() + ')'"></span>
+                <div>
+                  <strong>{{ currentUserName() }}</strong>
+                  <span>{{ currentUserRole() }}</span>
+                  <small [class.frozen]="currentUserStatus() === 'Frozen'">{{ currentUserStatus() }} account</small>
+                </div>
+              </div>
+
+              <a class="me-primary" routerLink="/dashboard/profile" (click)="closeMeMenu()">View profile</a>
+
+              <div class="me-section">
+                <span class="me-section-title">Explore</span>
+                <a routerLink="/about" (click)="closeMeMenu()">About</a>
+                <a routerLink="/features" (click)="closeMeMenu()">Features</a>
+                <a routerLink="/policy" (click)="closeMeMenu()">Policy</a>
+                <a routerLink="/contact" (click)="closeMeMenu()">Contact</a>
+              </div>
+
+              <div class="me-section" *ngIf="isModeratorOrAdmin() || isAdmin()">
+                <span class="me-section-title">Management</span>
+                <a *ngIf="isModeratorOrAdmin()" routerLink="/moderation" (click)="closeMeMenu()">Moderation</a>
+                <a *ngIf="isAdmin()" routerLink="/admin" (click)="closeMeMenu()">Admin</a>
+              </div>
+
+              <button type="button" class="me-logout" (click)="logout()">Sign Out</button>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-template #guestNav>
+        <nav class="nav nav-guest" aria-label="Guest navigation">
+          <a class="nav-link" routerLink="/about" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">About</a>
+          <a class="nav-link" routerLink="/features" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Features</a>
+          <a class="nav-link" routerLink="/policy" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Policy</a>
+          <a class="nav-link" routerLink="/contact" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Contact</a>
+          <a class="nav-link" routerLink="/auth" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Sign In</a>
+        </nav>
+      </ng-template>
+    </div>
+
+    <nav *ngIf="isLoggedIn()" class="nav nav-member" aria-label="Member navigation">
+      <a
+        class="nav-link nav-link-stack member-nav-link"
+        routerLink="/dashboard/feed"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.75v-6h-4.5v6H5a1 1 0 0 1-1-1v-9.5Z"></path>
+        </svg>
+        <span>Feed</span>
+      </a>
+
+      <a
+        class="nav-link nav-link-stack member-nav-link"
+        routerLink="/dashboard/requests"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M7.5 11a3.5 3.5 0 1 0-3.5-3.5A3.5 3.5 0 0 0 7.5 11Zm9 0A3.5 3.5 0 1 0 13 7.5a3.5 3.5 0 0 0 3.5 3.5ZM3 20a4.5 4.5 0 0 1 9 0v1H3Zm9 1v-1a5.8 5.8 0 0 0-1-3.3A4.5 4.5 0 0 1 21 20v1Z"></path>
+        </svg>
+        <span>Network</span>
+      </a>
+
+      <a
+        class="nav-link nav-link-stack member-nav-link"
+        routerLink="/dashboard/messenger"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-4.5 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"></path>
+        </svg>
+        <span>Messages</span>
+        <span class="nav-dot"></span>
+      </a>
+
+      <a
+        class="nav-link nav-link-stack member-nav-link"
+        routerLink="/dashboard/notifications"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 3.75a4.5 4.5 0 0 0-4.5 4.5v2.16c0 .72-.2 1.42-.57 2.03L5.6 14.7A1.5 1.5 0 0 0 6.87 17h10.26a1.5 1.5 0 0 0 1.27-2.3l-1.33-2.26a3.93 3.93 0 0 1-.57-2.03V8.25A4.5 4.5 0 0 0 12 3.75ZM9 18.5a3 3 0 0 0 6 0H9Z"></path>
+        </svg>
+        <span>Notifications</span>
+        <span class="nav-badge">5</span>
+      </a>
+
+      <a
+        class="nav-link nav-link-stack member-nav-link"
+        routerLink="/dashboard/profile"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 12.25a4.5 4.5 0 1 0-4.5-4.5 4.5 4.5 0 0 0 4.5 4.5Zm0 2.25c-4.42 0-8 2.09-8 4.67V21h16v-1.83c0-2.58-3.58-4.67-8-4.67Z"></path>
+        </svg>
+        <span>Profile</span>
+      </a>
+    </nav>
+  </header>
+
+  <div class="feedback-banner" *ngIf="feedback$ | async as feedback" [class.info]="feedback.kind === 'info'">
+    <div class="feedback-banner-inner">
+      <span>{{ feedback.text }}</span>
+      <button type="button" (click)="dismissFeedback()">Dismiss</button>
+    </div>
+  </div>
+
+  <main class="app-main">
+    <div class="app-main-inner" [class.workspace-main-inner]="isWorkspaceRoute()">
+      <div class="route-stage" [class.route-enter]="animateRoute">
+        <router-outlet></router-outlet>
+      </div>
+    </div>
+  </main>
+
+  <button type="button" class="help-fab" aria-label="Help">?</button>
+</div>

@@ -1,0 +1,79 @@
+:host {
+  display: contents;
+}
+
+.modal-shell__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.62);
+  backdrop-filter: blur(3px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.modal-shell__frame {
+  position: relative;
+  width: min(100%, 42rem);
+  max-height: min(92vh, 72rem);
+  outline: none;
+}
+
+.modal-shell__frame--sm {
+  width: min(100%, 30rem);
+}
+
+.modal-shell__frame--md {
+  width: min(100%, 42rem);
+}
+
+.modal-shell__frame--lg {
+  width: min(100%, 60rem);
+}
+
+.modal-shell__frame--xl {
+  width: min(100%, 92rem);
+}
+
+.modal-shell__surface {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 0;
+  width: 100%;
+}
+
+.modal-shell__close {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  z-index: 1;
+  width: 2.6rem;
+  height: 2.6rem;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 12px 22px rgba(15, 23, 42, 0.12);
+  cursor: pointer;
+}
+
+.modal-shell__close span {
+  font-size: 1.2rem;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.modal-shell__close:hover {
+  transform: translateY(-1px);
+}
+
+.modal-shell__close:focus-visible {
+  outline: 2px solid rgba(31, 95, 255, 0.32);
+  outline-offset: 2px;
+}

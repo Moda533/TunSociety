@@ -1,0 +1,164 @@
+<section class="social-page requests-page">
+  <div class="network-layout">
+    <main class="network-main">
+      <article class="social-card request-card">
+        <header class="section-head">
+          <div class="section-title">
+            <span class="section-icon">+</span>
+            <h2>Friend Requests</h2>
+            <span class="badge-count">{{ pendingReceivedCount }}</span>
+          </div>
+
+          <div class="section-head-actions">
+            <button type="button" class="dashboard-button secondary" (click)="refreshRequests()">Refresh</button>
+            <a routerLink="/dashboard/search" [queryParams]="{ scope: 'users' }" class="see-all">See all</a>
+          </div>
+        </header>
+
+        <div class="request-summary dashboard-stat-grid">
+          <article class="dashboard-stat-card">
+            <strong>{{ pendingReceivedCount }}</strong>
+            <span>Pending received</span>
+          </article>
+          <article class="dashboard-stat-card">
+            <strong>{{ acceptedCount }}</strong>
+            <span>Accepted</span>
+          </article>
+          <article class="dashboard-stat-card">
+            <strong>{{ sentCount }}</strong>
+            <span>Sent by you</span>
+          </article>
+          <article class="dashboard-stat-card">
+            <strong>{{ currentUserDisplayName }}</strong>
+            <span>Signed in as</span>
+          </article>
+        </div>
+
+        <div class="request-toolbar">
+          <label class="dashboard-field request-search">
+            <span>Search requests</span>
+            <input type="search" [formControl]="searchControl" placeholder="Search by name, email, or note">
+          </label>
+
+          <div class="filter-pills" role="tablist" aria-label="Request filters">
+            <button type="button" [class.active]="filterControl.value === 'all'" (click)="filterControl.setValue('all')">All</button>
+            <button type="button" [class.active]="filterControl.value === 'pending'" (click)="filterControl.setValue('pending')">Pending</button>
+            <button type="button" [class.active]="filterControl.value === 'accepted'" (click)="filterControl.setValue('accepted')">Accepted</button>
+            <button type="button" [class.active]="filterControl.value === 'sent'" (click)="filterControl.setValue('sent')">Sent</button>
+          </div>
+        </div>
+
+        <p class="dashboard-hint" *ngIf="isLoading">Loading friend requests...</p>
+        <p class="dashboard-error" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+        <div class="request-list" *ngIf="filteredRequests.length; else noRequests">
+          <article class="request-row" *ngFor="let request of filteredRequests; trackBy: trackByRequestId">
+            <span
+              class="avatar avatar--pink"
+              [style.background-image]="'url(' + getRequestAvatarUrl(request) + ')'">
+              {{ getRequestAvatarUrl(request) ? '' : counterpartName(request).charAt(0).toUpperCase() }}
+            </span>
+
+            <div class="request-copy">
+              <strong>{{ counterpartName(request) }}</strong>
+              <span>{{ requestDirection(request) }} request - {{ request.status }}</span>
+              <p>{{ request.note || 'No note attached.' }}</p>
+            </div>
+
+            <div class="request-actions">
+              <button type="button" class="primary" *ngIf="canRespond(request)" (click)="acceptRequest(request.id)">Accept</button>
+              <button type="button" class="secondary" *ngIf="canRespond(request)" (click)="declineRequest(request.id)">Decline</button>
+              <span class="status-chip" *ngIf="!canRespond(request)">{{ request.status }}</span>
+            </div>
+          </article>
+        </div>
+
+        <ng-template #noRequests>
+          <div class="dashboard-empty">
+            <strong>No requests found.</strong>
+            <p>Try a different search or send a new request from the sidebar.</p>
+          </div>
+        </ng-template>
+      </article>
+
+      <article class="social-card know-card">
+        <header class="section-head section-head--compact">
+          <h2>Request activity</h2>
+          <a routerLink="/dashboard/search" [queryParams]="{ scope: 'users' }" class="see-all">Find people</a>
+        </header>
+
+        <div class="request-summary request-summary--compact">
+          <article class="dashboard-stat-card">
+            <strong>{{ pendingReceivedCount }}</strong>
+            <span>Need your reply</span>
+          </article>
+          <article class="dashboard-stat-card">
+            <strong>{{ acceptedCount }}</strong>
+            <span>Connected</span>
+          </article>
+        </div>
+
+        <div class="request-actions request-actions--inline">
+          <button type="button" class="dashboard-button" (click)="refreshRequests()">Reload requests</button>
+          <a routerLink="/dashboard/messages" class="dashboard-button secondary">Open messages</a>
+        </div>
+      </article>
+    </main>
+
+    <aside class="network-rail">
+      <article class="social-card find-card">
+        <h2>Find Friends</h2>
+        <form class="search-box" (ngSubmit)="searchUsers()">
+          <span>Search</span>
+          <input
+            type="text"
+            [formControl]="discoverControl"
+            placeholder="Search people..."
+            aria-label="Search people">
+          <button type="submit" class="dashboard-button secondary" [disabled]="isSearchingUsers">Search</button>
+        </form>
+
+        <label class="dashboard-field note-field">
+          <span>Request note</span>
+          <textarea [formControl]="noteControl" rows="4" placeholder="Optional note to send with the request"></textarea>
+        </label>
+      </article>
+
+      <article class="social-card friends-rail-card">
+        <header class="section-title section-title--rail">
+          <div class="section-title">
+            <span class="section-icon">Search</span>
+            <h2>Search Results</h2>
+            <span class="badge-count badge-count--light">{{ userResults.length }}</span>
+          </div>
+        </header>
+
+        <p class="dashboard-hint" *ngIf="isSearchingUsers">Searching members...</p>
+        <p class="dashboard-error" *ngIf="searchErrorMessage">{{ searchErrorMessage }}</p>
+
+        <div class="friend-rail-list" *ngIf="userResults.length; else emptyResults">
+          <article class="friend-rail-row" *ngFor="let user of userResults; trackBy: trackByUserId">
+            <span
+              class="avatar avatar--purple"
+              [style.background-image]="'url(' + getUserAvatarUrl(user) + ')'">
+              {{ getUserAvatarUrl(user) ? '' : user.displayName.charAt(0).toUpperCase() }}
+            </span>
+            <div>
+              <strong>{{ user.displayName }}</strong>
+              <span>{{ user.role }}</span>
+              <span>{{ user.email }}</span>
+            </div>
+            <button type="button" class="dashboard-button secondary" (click)="sendRequest(user)">Send</button>
+          </article>
+        </div>
+
+        <ng-template #emptyResults>
+          <div class="dashboard-empty dashboard-empty--compact">
+            <strong>No search results.</strong>
+            <p>Use the search form above to find members and send requests.</p>
+          </div>
+        </ng-template>
+      </article>
+    </aside>
+  </div>
+</section>

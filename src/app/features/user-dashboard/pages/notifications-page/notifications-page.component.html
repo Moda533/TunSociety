@@ -1,0 +1,52 @@
+<section class="social-page notifications-page">
+  <article class="social-card notifications-card">
+    <header class="notifications-head">
+      <div>
+        <h1>Notifications</h1>
+        <p class="notifications-summary">{{ unreadCount }} unread, {{ readCount }} read</p>
+
+        <div class="notifications-tabs">
+          <button type="button" [class.active]="activeTab === 'all'" (click)="selectTab('all')">All</button>
+          <button type="button" [class.active]="activeTab === 'unread'" (click)="selectTab('unread')">Unread</button>
+          <button type="button" [class.active]="activeTab === 'mentions'" (click)="selectTab('mentions')">Mentions</button>
+        </div>
+      </div>
+
+      <div class="notifications-actions">
+        <button type="button" class="dashboard-button secondary" (click)="refreshNotifications()">Refresh</button>
+        <button type="button" class="dashboard-button" (click)="markAllRead()" [disabled]="unreadCount === 0">Mark all as read</button>
+      </div>
+    </header>
+
+    <p class="dashboard-hint notifications-status" *ngIf="isLoading">Loading notifications...</p>
+    <p class="dashboard-error notifications-status" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+    <div class="notification-list" *ngIf="visibleNotifications.length; else emptyNotifications">
+      <article class="notification-row" *ngFor="let notification of visibleNotifications; trackBy: trackByNotificationId">
+        <span class="notification-icon" [ngClass]="notificationIconClass(notification.type)">
+          {{ notificationIconLabel(notification.type) }}
+        </span>
+
+        <div class="notification-copy">
+          <p><strong>{{ notification.title }}</strong></p>
+          <p>{{ notification.detail }}</p>
+          <span>{{ notification.createdAtUtc | date: 'short' }}</span>
+        </div>
+
+        <div class="notification-actions">
+          <span class="unread-dot" *ngIf="!notification.isRead"></span>
+          <button type="button" class="dashboard-button secondary" *ngIf="!notification.isRead" (click)="markAsRead(notification.id)">
+            Mark read
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <ng-template #emptyNotifications>
+      <div class="dashboard-empty notifications-empty">
+        <strong>No notifications found.</strong>
+        <p>Try switching tabs or refresh the list.</p>
+      </div>
+    </ng-template>
+  </article>
+</section>
