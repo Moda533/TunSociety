@@ -1,0 +1,68 @@
+<nav class="post-action-menu" role="menu" aria-label="Post actions" (click)="$event.stopPropagation()">
+  <ng-container *ngFor="let group of actionGroups; let last = last; trackBy: trackGroup">
+    <button
+      *ngFor="let item of group.items; trackBy: trackItem"
+      type="button"
+      class="post-action-menu__item"
+      [class.post-action-menu__item--danger]="item.tone === 'danger'"
+      role="menuitem"
+      (click)="selectAction(item.action)">
+      <span class="post-action-menu__icon" aria-hidden="true" [ngSwitch]="item.icon">
+        <svg *ngSwitchCase="'eye-off'" viewBox="0 0 24 24">
+          <path d="M3 3l18 18"></path>
+          <path d="M10.7 10.7a2 2 0 0 0 2.6 2.6"></path>
+          <path d="M9.9 5.2A9.6 9.6 0 0 1 12 5c5 0 8.3 4 9.4 6.2a10.8 10.8 0 0 1-2.2 3.1"></path>
+          <path d="M6.4 6.9A11.8 11.8 0 0 0 2.6 11.2C3.7 13.4 7 17.4 12 17.4c1.1 0 2.1-.2 3-.6"></path>
+        </svg>
+        <svg *ngSwitchCase="'flag'" viewBox="0 0 24 24">
+          <path d="M6 20V5.5"></path>
+          <path d="M6 5.5c3-1.7 5.4 1.4 8.6-.2 1.1-.5 2.2-.6 3.4-.1v8.4c-1.2-.5-2.3-.4-3.4.1-3.2 1.6-5.6-1.5-8.6.2"></path>
+        </svg>
+        <svg *ngSwitchCase="'ban'" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="8.5"></circle>
+          <path d="M6.1 6.1l11.8 11.8"></path>
+        </svg>
+        <svg *ngSwitchCase="'share'" viewBox="0 0 24 24">
+          <path d="M15.5 8.5 8.2 12l7.3 3.5"></path>
+          <circle cx="6.2" cy="12" r="2.2"></circle>
+          <circle cx="17.8" cy="6.8" r="2.2"></circle>
+          <circle cx="17.8" cy="17.2" r="2.2"></circle>
+        </svg>
+        <svg *ngSwitchCase="'edit'" viewBox="0 0 24 24">
+          <path d="M5 19h4.2L18.6 9.6a2.1 2.1 0 0 0 0-3L17.4 5.4a2.1 2.1 0 0 0-3 0L5 14.8V19z"></path>
+          <path d="M13.5 6.5l4 4"></path>
+        </svg>
+        <svg *ngSwitchCase="'trash'" viewBox="0 0 24 24">
+          <path d="M4.5 7h15"></path>
+          <path d="M9.5 7V5.5h5V7"></path>
+          <path d="M7 7l.8 12h8.4L17 7"></path>
+          <path d="M10.5 10.5v5"></path>
+          <path d="M13.5 10.5v5"></path>
+        </svg>
+        <svg *ngSwitchCase="'shield'" viewBox="0 0 24 24">
+          <path d="M12 3.5 19 6v5.3c0 4.5-2.8 7.6-7 9.2-4.2-1.6-7-4.7-7-9.2V6l7-2.5z"></path>
+          <path d="M9 12l2 2 4-4"></path>
+        </svg>
+        <svg *ngSwitchCase="'check'" viewBox="0 0 24 24">
+          <path d="M4.5 12.5 9.5 17 19.5 7"></path>
+        </svg>
+        <svg *ngSwitchCase="'scan'" viewBox="0 0 24 24">
+          <path d="M7 4H5.5A1.5 1.5 0 0 0 4 5.5V7"></path>
+          <path d="M17 4h1.5A1.5 1.5 0 0 1 20 5.5V7"></path>
+          <path d="M20 17v1.5a1.5 1.5 0 0 1-1.5 1.5H17"></path>
+          <path d="M7 20H5.5A1.5 1.5 0 0 1 4 18.5V17"></path>
+          <path d="M7 12h10"></path>
+          <path d="M9 9h6"></path>
+          <path d="M9 15h6"></path>
+        </svg>
+      </span>
+
+      <span class="post-action-menu__copy">
+        <strong>{{ item.title }}</strong>
+        <small *ngIf="item.description">{{ item.description }}</small>
+      </span>
+    </button>
+
+    <span class="post-action-menu__divider" *ngIf="!last"></span>
+  </ng-container>
+</nav>

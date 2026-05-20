@@ -14,6 +14,7 @@ export class ModalShellComponent implements OnInit, AfterViewInit, OnDestroy {
   @Input() ariaLabel = 'Dialog';
   @Input() ariaLabelledBy = '';
   @Input() ariaDescribedBy = '';
+  @Input() zIndex = 1000;
   @Output() closed = new EventEmitter<void>();
 
   @ViewChild('frame', { static: true }) frame?: ElementRef<HTMLElement>;

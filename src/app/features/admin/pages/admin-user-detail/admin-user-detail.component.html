@@ -1,0 +1,443 @@
+<section class="admin-simple-page">
+  <p *ngIf="errorMessage" class="admin-alert error">{{ errorMessage }}</p>
+  <p *ngIf="actionMessage" class="admin-alert">{{ actionMessage }}</p>
+  <p *ngIf="isLoading && !user" class="admin-alert">Loading user profile...</p>
+
+  <ng-container *ngIf="user as profileUser; else emptyProfile">
+    <section class="admin-user-detail-grid">
+      <article class="user-header-card admin-card" [class.risk-high]="riskTone === 'high'">
+        <div class="user-header-main">
+          <div class="profile-main">
+            <span
+              class="admin-avatar large"
+              [style.background-image]="'url(' + userAvatarUrl + ')'">
+              {{ userAvatarUrl ? '' : userInitials }}
+            </span>
+
+            <div class="identity-block">
+              <div class="identity-title-row">
+                <h1>{{ profileUser.displayName || profileUser.userName }}</h1>
+                <span
+                  class="inline-risk-badge"
+                  [class.low]="riskTone === 'low'"
+                  [class.medium]="riskTone === 'medium'"
+                  [class.high]="riskTone === 'high'">
+                  <app-admin-icon name="warning" [size]="15"></app-admin-icon>
+                  {{ riskBadgeLabel }}
+                </span>
+              </div>
+              <p>
+                <span>{{ profileUser.email }}</span>
+                <span>@{{ profileUser.userName }}</span>
+              </p>
+
+              <div class="profile-pills" aria-label="User status">
+                <span class="status-pill" [class.frozen]="isFrozen">
+                  <app-admin-icon [name]="isFrozen ? 'lock' : 'check'" [size]="14"></app-admin-icon>
+                  {{ isFrozen ? 'Frozen' : 'Active' }}
+                </span>
+                <span *ngIf="hasFlaggedSignals" class="status-pill flagged">
+                  <app-admin-icon name="flag" [size]="14"></app-admin-icon>
+                  Flagged
+                </span>
+                <span class="status-pill neutral">
+                  <app-admin-icon name="user" [size]="14"></app-admin-icon>
+                  {{ profileUser.role }}
+                </span>
+                <span class="status-pill neutral">
+                  <app-admin-icon name="badge" [size]="14"></app-admin-icon>
+                  {{ profileUser.badgeName || 'Member' }}
+                </span>
+                <span class="status-pill neutral">
+                  <app-admin-icon name="building" [size]="14"></app-admin-icon>
+                  {{ profileUser.departmentName || 'Unassigned' }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <aside class="profile-tools">
+            <button type="button" class="admin-link-button subtle back-link" (click)="goBackToUsers()">
+              <app-admin-icon name="arrow-left" [size]="16"></app-admin-icon>
+              <span>Back to users</span>
+            </button>
+            <button type="button" class="admin-button secondary compact" (click)="refresh()" [disabled]="isLoading">
+              <app-admin-icon name="refresh" [size]="15"></app-admin-icon>
+              {{ isLoading ? 'Refreshing...' : 'Refresh' }}
+            </button>
+            <small *ngIf="lastRefresh">Synced {{ lastRefresh | date: 'shortTime' }}</small>
+          </aside>
+        </div>
+
+        <div
+          class="decision-guidance"
+          [class.safe]="decisionGuidanceTone === 'safe'"
+          [class.warning]="decisionGuidanceTone === 'warning'"
+          [class.danger]="decisionGuidanceTone === 'danger'">
+          <strong>{{ profileSignalLabel }}</strong>
+          <span>{{ decisionGuidance }}</span>
+        </div>
+
+        <dl class="user-meta-row">
+          <div>
+            <dt>Joined</dt>
+            <dd>{{ profileUser.createdAtUtc | date: 'mediumDate' }}</dd>
+          </div>
+          <div>
+            <dt>Gender</dt>
+            <dd>{{ profileUser.gender || 'Not set' }}</dd>
+          </div>
+          <div>
+            <dt>Age</dt>
+            <dd>{{ profileUser.age === null ? 'Not set' : profileUser.age }}</dd>
+          </div>
+          <div>
+            <dt>Badge / Title</dt>
+            <dd>{{ profileUser.badgeName || 'Member' }}</dd>
+          </div>
+          <div>
+            <dt>Department</dt>
+            <dd>{{ profileUser.departmentName || 'Unassigned' }}</dd>
+          </div>
+          <div>
+            <dt>ID</dt>
+            <dd>{{ shortUserId }}</dd>
+          </div>
+        </dl>
+      </article>
+
+      <aside class="moderation-actions-panel admin-card" [class.frozen]="isFrozen">
+        <div class="panel-heading">
+          <div>
+            <h2>Moderation actions</h2>
+            <p>Last action: {{ lastModerationActionTime }}</p>
+          </div>
+          <span
+            class="status-pill"
+            [class.frozen]="isFrozen"
+            [class.flagged]="moderationStatus.tone === 'flagged'">
+            <app-admin-icon [name]="isFrozen ? 'lock' : moderationStatus.tone === 'flagged' ? 'flag' : 'check'" [size]="14"></app-admin-icon>
+            {{ isFrozen ? 'Account frozen' : moderationStatus.label }}
+          </span>
+        </div>
+
+        <label class="admin-field note">
+          <span>Admin note</span>
+          <textarea [formControl]="noteControl" placeholder="Explain the reason for this action..."></textarea>
+        </label>
+
+        <p class="action-validation" *ngIf="!isFrozen && !hasModerationNote">
+          A note is required before freezing this account.
+        </p>
+
+        <div class="primary-action-stack" aria-label="Primary moderation actions">
+          <button type="button" class="admin-button secondary full-width" (click)="issueWarning()" [disabled]="isUpdating">
+            <app-admin-icon name="warning" [size]="18"></app-admin-icon>
+            Warn
+          </button>
+
+          <ng-container *ngIf="!isFrozen; else frozenActions">
+            <button type="button" class="admin-button danger full-width" (click)="requestFreezeConfirmation()" [disabled]="isUpdating || !hasModerationNote">
+              <app-admin-icon name="lock" [size]="18"></app-admin-icon>
+              Freeze
+            </button>
+          </ng-container>
+
+          <ng-template #frozenActions>
+            <button type="button" class="admin-button danger full-width" (click)="unfreezeUser()" [disabled]="isUpdating">
+              <app-admin-icon name="unlock" [size]="18"></app-admin-icon>
+              Unfreeze
+            </button>
+          </ng-template>
+
+          <div class="more-actions" [class.open]="isMoreActionsOpen">
+            <button
+              type="button"
+              class="admin-button ghost full-width more-actions-trigger"
+              aria-haspopup="true"
+              [attr.aria-expanded]="isMoreActionsOpen"
+              (click)="toggleMoreActions()">
+              <app-admin-icon name="more" [size]="18"></app-admin-icon>
+              More actions
+            </button>
+
+            <div class="more-actions-menu" *ngIf="isMoreActionsOpen" role="menu">
+              <div class="more-actions-section">
+                <span>Account tools</span>
+                <label class="admin-field compact">
+                  <span>Change role</span>
+                  <app-admin-select
+                    [value]="profileUser.role"
+                    [disabled]="isUpdating"
+                    [options]="roleOptions"
+                    [ariaLabel]="'Change role for ' + (profileUser.displayName || profileUser.userName)"
+                    (valueChange)="updateUserRole($event)">
+                  </app-admin-select>
+                </label>
+
+                <label class="admin-field compact">
+                  <span>Department</span>
+                  <app-admin-select
+                    [value]="profileUser.departmentId || ''"
+                    [disabled]="isUpdating"
+                    [options]="departmentOptions"
+                    [ariaLabel]="'Assign department for ' + (profileUser.displayName || profileUser.userName)"
+                    (valueChange)="updateUserDepartment($event)">
+                  </app-admin-select>
+                </label>
+
+                <label class="admin-field compact">
+                  <span>Badge / Title</span>
+                  <app-admin-select
+                    [value]="profileUser.badgeId"
+                    [disabled]="isUpdating"
+                    [options]="badgeOptions"
+                    [ariaLabel]="'Assign badge for ' + (profileUser.displayName || profileUser.userName)"
+                    (valueChange)="updateUserBadge($event)">
+                  </app-admin-select>
+                </label>
+              </div>
+
+              <div class="more-actions-section">
+                <span>Investigation</span>
+                <button type="button" role="menuitem" class="menu-action" (click)="openAuditTrail()">
+                  <app-admin-icon name="file-text" [size]="16"></app-admin-icon>
+                  View audit trail
+                </button>
+                <button type="button" role="menuitem" class="menu-action" (click)="openAppealHistory()">
+                  <app-admin-icon name="inbox" [size]="16"></app-admin-icon>
+                  View appeals
+                </button>
+                <button
+                  *ngIf="shouldShowEscalationAction"
+                  type="button"
+                  role="menuitem"
+                  class="menu-action warning"
+                  (click)="openEscalationQueue()">
+                  <app-admin-icon name="arrow-up" [size]="16"></app-admin-icon>
+                  Escalate from queue
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <section class="stats-row" aria-label="User moderation statistics">
+        <article
+          class="stat-card admin-card"
+          *ngFor="let card of userStatCards; trackBy: trackByStatCardKey">
+          <div class="stat-card-header">
+            <span class="stat-title">{{ card.title }}</span>
+            <span
+              class="severity-badge"
+              [class.low]="card.severityTone === 'low'"
+              [class.medium]="card.severityTone === 'medium'"
+              [class.high]="card.severityTone === 'high'"
+              [class.critical]="card.severityTone === 'critical'"
+              [class.monitoring]="card.severityTone === 'monitoring'"
+              [class.action]="card.severityTone === 'action'">
+              {{ card.severityLabel }}
+            </span>
+          </div>
+
+          <strong>{{ card.primaryValue }}</strong>
+          <span class="stat-primary-label">{{ card.primaryLabel }}</span>
+
+          <div class="stat-meta-row">
+            <small>{{ card.periodLabel }}</small>
+            <small
+              class="trend-pill"
+              [class.up]="card.trend.direction === 'up'"
+              [class.down]="card.trend.direction === 'down'"
+              [class.flat]="card.trend.direction === 'flat'">
+              {{ card.trend.label }}
+            </small>
+          </div>
+
+          <div class="stat-detail-list">
+            <p class="stat-detail" *ngFor="let detail of card.details">
+              <span>{{ detail.label }}</span>
+              <strong>{{ detail.value }}</strong>
+            </p>
+          </div>
+        </article>
+      </section>
+
+      <aside class="flagged-content-panel admin-card">
+        <div class="panel-heading compact-heading">
+          <h2>Recent flagged content</h2>
+          <span>{{ flaggedContent.length }}</span>
+        </div>
+
+        <div class="flagged-content-list" *ngIf="recentFlaggedContentPreview.length; else noFlaggedContent">
+          <article
+            class="flagged-content-item"
+            *ngFor="let item of recentFlaggedContentPreview; trackBy: trackByFlagId"
+            [class.blocked]="item.action === 'Block'"
+            role="button"
+            tabindex="0"
+            (click)="openModerationCase(item)"
+            (keydown.enter)="openModerationCase(item)"
+            (keydown.space)="openModerationCase(item); $event.preventDefault()">
+            <span class="flag-indicator"></span>
+            <div class="flag-content-main">
+              <div class="flag-status-row">
+                <span class="status-pill" [class.frozen]="item.action === 'Block'" [class.flagged]="item.action !== 'Block'">
+                  <app-admin-icon [name]="getContentActionIcon(item)" [size]="14"></app-admin-icon>
+                  {{ item.action }}
+                </span>
+                <span
+                  class="review-pill"
+                  [class.pending]="getReviewStatusClass(item) === 'pending'"
+                  [class.success]="getReviewStatusClass(item) === 'success'"
+                  [class.warning]="getReviewStatusClass(item) === 'warning'"
+                  [class.danger]="getReviewStatusClass(item) === 'danger'">
+                  <app-admin-icon [name]="getReviewStatusIcon(item)" [size]="14"></app-admin-icon>
+                  {{ getReviewStatusLabel(item) }}
+                </span>
+                <time>{{ item.createdAtUtc | date: 'short' }}</time>
+              </div>
+              <p>{{ getFlagPreview(item) }}</p>
+              <button type="button" class="flag-view-button" (click)="openModerationCase(item); $event.stopPropagation()">
+                <app-admin-icon name="external-link" [size]="14"></app-admin-icon>
+                View case
+              </button>
+            </div>
+          </article>
+        </div>
+      </aside>
+
+      <section class="history-panel admin-card">
+        <div class="history-header">
+          <div>
+            <h2>Activity & history</h2>
+            <p>{{ moderationActionsCount }} moderation actions &middot; {{ posts.length }} posts &middot; {{ appeals.length }} appeals</p>
+          </div>
+
+          <form class="admin-filter-row compact-search" (ngSubmit)="submitSearch()">
+            <label class="admin-field search">
+              <span>Search {{ activeHistoryTab }}</span>
+              <input type="search" [formControl]="searchControl" [placeholder]="activeSearchPlaceholder">
+            </label>
+            <button type="submit" class="admin-button secondary icon-only" [attr.aria-label]="'Search ' + activeHistoryTab" [attr.title]="'Search ' + activeHistoryTab">
+              <app-admin-icon name="search" [size]="16"></app-admin-icon>
+            </button>
+            <button *ngIf="searchQuery" type="button" class="admin-button ghost icon-only" (click)="clearSearch()" [attr.aria-label]="'Clear filters for ' + activeHistoryTab" [attr.title]="'Clear filters for ' + activeHistoryTab">
+              <app-admin-icon name="filter" [size]="16"></app-admin-icon>
+            </button>
+          </form>
+        </div>
+
+        <div class="history-tabs" role="tablist" aria-label="Profile history filters">
+          <button
+            type="button"
+            *ngFor="let tab of historyTabs"
+            [class.active]="activeHistoryTab === tab.value"
+            (click)="setHistoryTab(tab.value)">
+            {{ tab.label }}
+            <span>{{ getTabCount(tab.value) }}</span>
+          </button>
+        </div>
+
+        <div [ngSwitch]="activeHistoryTab" class="history-content">
+          <section *ngSwitchCase="'posts'" class="history-section">
+            <div class="compact-list admin-card-list" *ngIf="filteredPosts.length; else noPosts">
+              <article class="post-row admin-card" *ngFor="let post of filteredPosts; trackBy: trackByPostId">
+                <div>
+                  <strong>{{ post.title }}</strong>
+                  <span>{{ post.createdAtUtc | date: 'mediumDate' }} &middot; {{ formatPostVisibility(post.visibility) }}</span>
+                </div>
+                <p>{{ post.content }}</p>
+              </article>
+            </div>
+          </section>
+
+          <section *ngSwitchCase="'moderation'" class="history-section">
+            <div class="compact-list admin-card-list" *ngIf="filteredModerationActions.length; else noModerationActions">
+              <article class="compact-row action-row admin-card admin-card--warning" *ngFor="let action of filteredModerationActions; trackBy: trackByModerationActionId">
+                <span class="action-type">{{ action.type }}</span>
+                <strong>{{ action.title }}</strong>
+                <span>{{ action.status }} &middot; {{ formatRelativeTime(action.timestamp) }} &middot; {{ action.timestamp | date: 'short' }}</span>
+              </article>
+            </div>
+          </section>
+
+          <section *ngSwitchCase="'appeals'" class="history-section">
+            <div class="compact-list admin-card-list" *ngIf="filteredAppeals.length; else noAppeals">
+              <article
+                class="compact-row admin-card"
+                *ngFor="let appeal of filteredAppeals; trackBy: trackByAppealId"
+                [class.admin-card--warning]="appeal.status === 'Open'"
+                [class.admin-card--success]="appeal.status === 'Accepted'"
+                [class.admin-card--danger]="appeal.status === 'Rejected'">
+                <strong>{{ appeal.targetType }} {{ appeal.targetId }}</strong>
+                <span>{{ appeal.status }} &middot; {{ formatRelativeTime(appeal.createdAtUtc) }} &middot; {{ appeal.createdAtUtc | date: 'short' }}</span>
+                <p *ngIf="appeal.reason">{{ appeal.reason }}</p>
+              </article>
+            </div>
+          </section>
+        </div>
+      </section>
+    </section>
+  </ng-container>
+
+  <ng-template #emptyProfile>
+    <div class="admin-empty admin-card">
+      <strong>No user loaded.</strong>
+      <p>The selected user could not be loaded.</p>
+    </div>
+  </ng-template>
+
+  <ng-template #noFlaggedContent>
+    <div class="admin-empty compact">
+      <strong>No recent flagged content.</strong>
+    </div>
+  </ng-template>
+
+  <ng-template #noModerationActions>
+    <div class="admin-empty admin-card compact">
+      <strong>No moderation history found.</strong>
+    </div>
+  </ng-template>
+
+  <ng-template #noAppeals>
+    <div class="admin-empty admin-card compact">
+      <strong>No appeals found.</strong>
+    </div>
+  </ng-template>
+
+  <ng-template #noPosts>
+    <div class="admin-empty admin-card compact">
+      <strong>No posts found.</strong>
+    </div>
+  </ng-template>
+
+  <app-modal-shell
+    *ngIf="isFreezeConfirmationOpen"
+    size="sm"
+    ariaLabel="Confirm account freeze"
+    [zIndex]="1200"
+    (closed)="closeFreezeConfirmation()">
+    <article class="dialog-card freeze-confirmation">
+      <span class="dialog-kicker">Destructive action</span>
+      <h2>Confirm freeze</h2>
+      <p>{{ freezeConfirmationSummary }}</p>
+
+      <div class="freeze-note-preview">
+        <span>Admin note</span>
+        <strong>{{ noteControl.value.trim() }}</strong>
+      </div>
+
+      <div class="dialog-actions">
+        <button type="button" class="admin-button secondary" (click)="closeFreezeConfirmation()" [disabled]="isUpdating">
+          Cancel
+        </button>
+        <button type="button" class="admin-button danger" (click)="confirmFreezeUser()" [disabled]="isUpdating || !hasModerationNote">
+          <app-admin-icon name="lock" [size]="18"></app-admin-icon>
+          {{ isUpdating ? 'Freezing...' : 'Freeze account' }}
+        </button>
+      </div>
+    </article>
+  </app-modal-shell>
+</section>

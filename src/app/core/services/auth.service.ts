@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, catchError, finalize, of, shareReplay, tap, timeout } from 'rxjs';
 import { ApiService } from './api.service';
-import { AuthResponse, LoginRequest, RegisterRequest } from '../../shared/models/auth.model';
-import { User } from '../../shared/models/user.model';
+import { ADMIN_WORKSPACE_PERMISSIONS, MODERATION_WORKSPACE_PERMISSIONS, PERMISSIONS } from '../permissions';
+import { AuthResponse, LoginRequest, RegisterRequest } from '../../features/auth/models/auth.model';
+import { User } from '../../features/user/models/user.model';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -80,9 +81,65 @@ export class AuthService {
     return this.userSubject.value?.role === 'Moderator';
   }
 
-  isModeratorOrAdmin(): boolean {
-    const role = this.userSubject.value?.role;
-    return role === 'Moderator' || role === 'Admin';
+  hasPermission(permission: string, user: User | null = this.userSubject.value): boolean {
+    return (user?.permissions ?? []).includes(permission);
+  }
+
+  hasAnyPermission(permissions: readonly string[], user: User | null = this.userSubject.value): boolean {
+    const userPermissions = user?.permissions ?? [];
+    return permissions.some((permission) => userPermissions.includes(permission));
+  }
+
+  canAccessAdminWorkspace(user: User | null = this.userSubject.value): boolean {
+    return this.hasAnyPermission(ADMIN_WORKSPACE_PERMISSIONS, user);
+  }
+
+  canAccessModerationWorkspace(user: User | null = this.userSubject.value): boolean {
+    return this.hasAnyPermission(MODERATION_WORKSPACE_PERMISSIONS, user);
+  }
+
+  canManageEvents(user: User | null = this.userSubject.value): boolean {
+    return this.hasPermission(PERMISSIONS.eventsManage, user);
+  }
+
+  getDefaultRoute(role?: string | null): string {
+    const user = this.userSubject.value;
+
+    if (user) {
+      if (this.hasPermission(PERMISSIONS.usersRead, user)) {
+        return '/admin';
+      }
+
+      if (this.hasPermission(PERMISSIONS.departmentsRead, user)) {
+        return '/admin/departments';
+      }
+
+      if (this.hasPermission(PERMISSIONS.badgesRead, user)) {
+        return '/admin/badges';
+      }
+
+      if (this.hasPermission(PERMISSIONS.rolePermissionsRead, user)) {
+        return '/admin/role-permissions';
+      }
+
+      if (this.hasPermission(PERMISSIONS.eventsManage, user)) {
+        return '/admin/event-evaluations';
+      }
+
+      if (this.hasPermission(PERMISSIONS.moderationReview, user)) {
+        return '/admin/moderation';
+      }
+
+      if (this.hasPermission(PERMISSIONS.appealsRead, user)) {
+        return '/admin/appeals';
+      }
+    }
+
+    if (user && this.canAccessModerationWorkspace(user)) {
+      return '/moderation';
+    }
+
+    return role === 'Admin' ? '/admin' : role === 'Moderator' ? '/moderation' : '/dashboard/profile';
   }
 
   updateStoredUser(user: User) {
@@ -170,6 +227,7 @@ export class AuthService {
         const storedAvatarUrl = typeof parsed.avatarUrl === 'string' ? parsed.avatarUrl.trim() : '';
         return {
           ...parsed,
+          permissions: Array.isArray(parsed.permissions) ? parsed.permissions : [],
           avatarUrl: storedAvatarUrl.startsWith('data:') || storedAvatarUrl.startsWith('blob:')
             ? ''
             : storedAvatarUrl

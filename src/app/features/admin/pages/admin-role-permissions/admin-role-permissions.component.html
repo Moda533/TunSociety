@@ -1,0 +1,85 @@
+<section class="role-permissions-page">
+  <header class="role-permissions-header admin-card">
+    <div>
+      <span class="eyebrow">Access control</span>
+      <h1>Roles & Permissions</h1>
+      <p>Configure what each system role can do. Assigning a role to a user applies these permissions automatically.</p>
+    </div>
+    <button type="button" class="admin-button secondary" (click)="load()" [disabled]="isLoading">
+      <app-admin-icon name="refresh" [size]="16"></app-admin-icon>
+      {{ isLoading ? 'Refreshing...' : 'Refresh' }}
+    </button>
+  </header>
+
+  <p *ngIf="errorMessage" class="admin-alert error">{{ errorMessage }}</p>
+  <p *ngIf="actionMessage" class="admin-alert">{{ actionMessage }}</p>
+
+  <div class="role-permissions-layout" *ngIf="catalog; else loadingState">
+    <aside class="admin-card role-list">
+      <div class="panel-title">
+        <h2>System roles</h2>
+        <span>{{ catalog.roles.length }}</span>
+      </div>
+
+      <button
+        type="button"
+        class="role-option"
+        *ngFor="let role of catalog.roles; trackBy: trackByRole"
+        [class.active]="role === selectedRole"
+        (click)="selectRole(role)">
+        <span>
+          <strong>{{ role }}</strong>
+          <small>{{ permissionCountForRole(role) }} permissions</small>
+        </span>
+        <app-admin-icon name="arrow-left" [size]="16"></app-admin-icon>
+      </button>
+    </aside>
+
+    <section class="admin-card permission-panel">
+      <div class="permission-panel-header">
+        <div>
+          <span class="eyebrow">Role</span>
+          <h2>{{ selectedRole }}</h2>
+          <p>{{ selectedRolePermissionCount }} permission{{ selectedRolePermissionCount === 1 ? '' : 's' }} enabled</p>
+        </div>
+
+        <div class="permission-actions">
+          <button type="button" class="admin-button ghost" (click)="resetRole()" [disabled]="isSaving">Reset</button>
+          <button
+            type="button"
+            class="admin-button"
+            (click)="save()"
+            [disabled]="isSaving || !canManageRolePermissions">
+            {{ isSaving ? 'Saving...' : 'Save permissions' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="permission-groups">
+        <section class="permission-group" *ngFor="let group of permissionGroups">
+          <h3>{{ group.label }}</h3>
+          <div class="permission-options">
+            <label class="permission-option" *ngFor="let permission of group.permissions; trackBy: trackByPermission">
+              <input
+                type="checkbox"
+                [checked]="isSelected(permission)"
+                [disabled]="isSaving || !canManageRolePermissions || isPermissionLocked(permission)"
+                (change)="togglePermission(permission, $any($event.target).checked)">
+              <span>
+                <strong>{{ permission }}</strong>
+                <small *ngIf="isPermissionLocked(permission)">Required for admin lockout protection</small>
+              </span>
+            </label>
+          </div>
+        </section>
+      </div>
+    </section>
+  </div>
+
+  <ng-template #loadingState>
+    <div class="admin-card admin-empty">
+      <strong>{{ isLoading ? 'Loading permissions...' : 'No permission data available.' }}</strong>
+      <p>Role permissions will appear here once the API responds.</p>
+    </div>
+  </ng-template>
+</section>

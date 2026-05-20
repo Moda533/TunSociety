@@ -1,0 +1,146 @@
+<section class="badges-page">
+  <header class="badges-header admin-card">
+    <div>
+      <span class="eyebrow">Profile labels</span>
+      <h1>Badges / Titles</h1>
+      <p>Manage club positions without turning them into application permissions.</p>
+    </div>
+    <button type="button" class="admin-button secondary" (click)="refresh()" [disabled]="isLoading">
+      <app-admin-icon name="refresh" [size]="16"></app-admin-icon>
+      {{ isLoading ? 'Refreshing...' : 'Refresh' }}
+    </button>
+  </header>
+
+  <p *ngIf="errorMessage" class="admin-alert error">{{ errorMessage }}</p>
+  <p *ngIf="actionMessage" class="admin-alert">{{ actionMessage }}</p>
+
+  <div class="badges-grid">
+    <article class="admin-card badge-form-card" *ngIf="canManageBadges">
+      <h2>{{ editingBadgeId ? 'Edit badge' : 'Create badge' }}</h2>
+      <form [formGroup]="badgeForm" (ngSubmit)="saveBadge()">
+        <label class="admin-field">
+          <span>Name</span>
+          <input type="text" formControlName="name" placeholder="Media Manager">
+        </label>
+
+        <label class="admin-field">
+          <span>Department scope</span>
+          <app-admin-select
+            formControlName="departmentId"
+            [options]="departmentOptions"
+            ariaLabel="Badge department scope">
+          </app-admin-select>
+        </label>
+
+        <div class="form-actions">
+          <button type="button" class="admin-button ghost" (click)="startCreate()">Clear</button>
+          <button type="submit" class="admin-button" [disabled]="isSaving">
+            {{ isSaving ? 'Saving...' : editingBadgeId ? 'Save changes' : 'Create badge' }}
+          </button>
+        </div>
+      </form>
+    </article>
+
+    <section class="admin-card badge-list-card global-badges-card">
+      <div class="panel-title">
+        <h2>Global badges</h2>
+        <span>{{ globalBadges.length }}</span>
+      </div>
+
+      <div class="global-badges-summary">
+        <div>
+          <strong>{{ defaultGlobalBadge?.name || 'No default badge' }}</strong>
+          <p>{{ defaultGlobalBadge ? 'Default badge assigned automatically to every user.' : 'Create a global badge to make it available across departments.' }}</p>
+        </div>
+        <small>{{ globalBadges.length }} global badge{{ globalBadges.length === 1 ? '' : 's' }}</small>
+      </div>
+
+      <button type="button" class="admin-button global-badges-open" (click)="openGlobalBadgesPopup()">
+        <app-admin-icon name="search" [size]="16"></app-admin-icon>
+        Open global badges
+      </button>
+    </section>
+
+    <section class="admin-card badge-list-card">
+      <div class="panel-title">
+        <h2>Department badges</h2>
+        <span>{{ departmentBadges.length }}</span>
+      </div>
+
+      <div *ngIf="departmentBadges.length; else noDepartmentBadges">
+        <article class="badge-row" *ngFor="let badge of departmentBadges; trackBy: trackByBadgeId">
+          <div>
+            <strong>{{ badge.name }}</strong>
+            <p>{{ badge.departmentName || 'Department' }}</p>
+            <small>{{ badge.userCount }} member{{ badge.userCount === 1 ? '' : 's' }}</small>
+          </div>
+          <div class="row-actions" *ngIf="canManageBadges">
+            <button type="button" class="admin-button secondary compact" (click)="editBadge(badge)">Edit</button>
+            <button type="button" class="admin-button danger compact" (click)="deleteBadge(badge)" [disabled]="isSaving">Delete</button>
+          </div>
+        </article>
+      </div>
+
+      <ng-template #noDepartmentBadges>
+        <div class="admin-empty compact">
+          <strong>No department badges yet.</strong>
+          <p>Create badges such as Media Chief or Events Coordinator after departments exist.</p>
+        </div>
+      </ng-template>
+    </section>
+  </div>
+
+  <app-modal-shell
+    *ngIf="isGlobalBadgesPopupOpen"
+    size="lg"
+    ariaLabelledBy="globalBadgesDialogTitle"
+    (closed)="closeGlobalBadgesPopup()">
+    <section class="global-badges-dialog">
+      <header class="global-badges-dialog-header">
+        <div>
+          <span class="eyebrow">Global badge catalog</span>
+          <h2 id="globalBadgesDialogTitle">Global badges</h2>
+          <p>{{ filteredGlobalBadges.length }} of {{ globalBadges.length }} badge{{ globalBadges.length === 1 ? '' : 's' }}</p>
+        </div>
+      </header>
+
+      <form class="global-badges-search" (ngSubmit)="$event.preventDefault()">
+        <label class="admin-field">
+          <span>Search global badges</span>
+          <input
+            type="search"
+            [formControl]="globalBadgeSearchControl"
+            placeholder="Badge name, default, members">
+        </label>
+        <button
+          *ngIf="globalBadgeSearchControl.value.trim()"
+          type="button"
+          class="admin-button ghost"
+          (click)="clearGlobalBadgeSearch()">
+          Clear
+        </button>
+      </form>
+
+      <div class="global-badges-scroll" *ngIf="filteredGlobalBadges.length; else noGlobalBadges">
+        <article class="badge-row" *ngFor="let badge of filteredGlobalBadges; trackBy: trackByBadgeId">
+          <div>
+            <strong>{{ badge.name }}</strong>
+            <p>{{ badge.isDefault ? 'Default badge assigned automatically to every user.' : 'Available across all departments.' }}</p>
+            <small>{{ badge.userCount }} member{{ badge.userCount === 1 ? '' : 's' }}</small>
+          </div>
+          <div class="row-actions" *ngIf="canManageBadges">
+            <button type="button" class="admin-button secondary compact" (click)="editGlobalBadge(badge)" [disabled]="badge.isDefault">Edit</button>
+            <button type="button" class="admin-button danger compact" (click)="deleteBadge(badge)" [disabled]="badge.isDefault || isSaving">Delete</button>
+          </div>
+        </article>
+      </div>
+
+      <ng-template #noGlobalBadges>
+        <div class="admin-empty compact">
+          <strong>No global badges found.</strong>
+          <p>Clear the search or create a global badge from the badge form.</p>
+        </div>
+      </ng-template>
+    </section>
+  </app-modal-shell>
+</section>

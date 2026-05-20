@@ -1,0 +1,35 @@
+<article class="social-card profile-summary-card profile-groups-card">
+  <header class="profile-groups-head">
+    <div>
+      <h2>Groups</h2>
+    </div>
+  </header>
+
+  <div class="profile-groups-tabs ts-scroll-row">
+    <button type="button" class="active">Public</button>
+  </div>
+
+  <p class="dashboard-hint" *ngIf="isLoading">Loading groups...</p>
+  <p class="dashboard-error" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+  <div class="profile-groups-grid" *ngIf="!isLoading && groups.length; else emptyGroups">
+    <article class="profile-group-card" *ngFor="let group of groups; trackBy: trackByGroupId">
+      <div
+        class="profile-group-cover"
+        [style.background-image]="group.coverImageUrl ? 'url(' + group.coverImageUrl + ')' : null">
+        <app-admin-icon *ngIf="!group.coverImageUrl" name="users" [size]="24"></app-admin-icon>
+      </div>
+      <div>
+        <strong>{{ group.name }}</strong>
+        <span>{{ group.memberCount }} {{ group.memberCount === 1 ? 'member' : 'members' }}</span>
+      </div>
+    </article>
+  </div>
+
+  <ng-template #emptyGroups>
+    <div class="dashboard-empty" *ngIf="!isLoading">
+      <strong>No public groups yet.</strong>
+      <p>Public groups connected to this profile will appear here.</p>
+    </div>
+  </ng-template>
+</article>

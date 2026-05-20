@@ -15,10 +15,9 @@ describe('AppComponent', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render title', async () => {
+  it('should expose the application title', async () => {
     const fixture = TestBed.createComponent(AppComponent);
     await fixture.whenStable();
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('.brand-name')?.textContent).toContain('TunSociety');
+    expect(fixture.componentInstance.title).toContain('TunSociety');
   });
 });

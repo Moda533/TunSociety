@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { CanDeactivate } from '@angular/router';
-import { FeedPageComponent } from '../../features/user-dashboard/pages/feed-page/feed-page.component';
+import { FeedPageComponent } from '../../features/user/pages/feed-page/feed-page.component';
 
 @Injectable({ providedIn: 'root' })
 export class FeedPendingChangesGuard implements CanDeactivate<FeedPageComponent> {

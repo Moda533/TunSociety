@@ -1,0 +1,161 @@
+<section class="admin-simple-page">
+  <header class="admin-simple-header">
+    <div>
+      <h1>Appeals</h1>
+      <p>Review user appeals and accept or reject each request.</p>
+    </div>
+
+    <div class="admin-simple-actions">
+      <button type="button" class="admin-button secondary" (click)="refresh()" [disabled]="isLoading">
+        <app-admin-icon name="refresh" [size]="16"></app-admin-icon>
+        {{ isLoading ? 'Refreshing...' : 'Refresh' }}
+      </button>
+      <span class="admin-muted" *ngIf="lastRefresh">Synced {{ lastRefresh | date: 'shortTime' }}</span>
+    </div>
+  </header>
+
+  <p *ngIf="errorMessage" class="admin-alert error">{{ errorMessage }}</p>
+  <p *ngIf="actionMessage" class="admin-alert">{{ actionMessage }}</p>
+
+  <div class="admin-inbox-layout">
+    <section class="admin-list-pane admin-card">
+      <form class="admin-filter-row" (ngSubmit)="submitSearch()">
+        <label class="admin-field search">
+          <span>Search appeals</span>
+          <input
+            type="search"
+            [formControl]="searchControl"
+            placeholder="User, target, reason">
+        </label>
+
+        <label class="admin-field status">
+          <span>Status</span>
+          <app-admin-select
+            [formControl]="statusFilterControl"
+            [options]="statusFilterOptions"
+            ariaLabel="Filter appeals by status"
+            (valueChange)="refresh()">
+          </app-admin-select>
+        </label>
+
+        <button type="submit" class="admin-button secondary icon-only" aria-label="Search appeals" title="Search appeals">
+          <app-admin-icon name="search" [size]="16"></app-admin-icon>
+        </button>
+        <button *ngIf="searchQuery" type="button" class="admin-button ghost icon-only" (click)="clearSearch()" aria-label="Clear appeal filters" title="Clear appeal filters">
+          <app-admin-icon name="filter" [size]="16"></app-admin-icon>
+        </button>
+      </form>
+
+      <div class="admin-table-header">
+        <span>User</span>
+        <span>Case</span>
+        <span>Status</span>
+        <span>Date</span>
+      </div>
+
+      <div class="admin-row-list admin-card-list" *ngIf="filteredAppeals.length; else emptyAppeals">
+        <button
+          type="button"
+          class="admin-appeal-row admin-card"
+          *ngFor="let appeal of filteredAppeals; trackBy: trackByAppealId"
+          [class.active]="selectedAppeal?.id === appeal.id"
+          [class.admin-card--warning]="appeal.status === 'Open'"
+          [class.admin-card--success]="appeal.status === 'Accepted'"
+          [class.admin-card--danger]="appeal.status === 'Rejected'"
+          (click)="selectAppeal(appeal)">
+          <span>
+            <strong>{{ appeal.userDisplayName }}</strong>
+            <small>{{ appeal.userEmail }}</small>
+          </span>
+          <span>
+            <strong>{{ formatOriginalAction(appeal) }}</strong>
+            <small>{{ appeal.targetType }} {{ appeal.targetId }}</small>
+          </span>
+          <span>
+            <span class="status-pill" [ngClass]="getAppealTone(appeal.status)">
+              <app-admin-icon [name]="appeal.status === 'Open' ? 'clock' : appeal.status === 'Accepted' ? 'check' : 'ban'" [size]="14"></app-admin-icon>
+              {{ appeal.status }}
+            </span>
+          </span>
+          <span>{{ appeal.createdAtUtc | date: 'short' }}</span>
+        </button>
+      </div>
+
+      <ng-template #emptyAppeals>
+        <div class="admin-empty admin-card">
+          <strong>No appeals found.</strong>
+          <p>Try a broader status filter or clear the search query.</p>
+        </div>
+      </ng-template>
+    </section>
+
+    <aside class="admin-detail-pane admin-card" *ngIf="selectedAppeal as appeal; else noSelection">
+      <div class="detail-title-row">
+        <div>
+          <h2>{{ appeal.userDisplayName }}</h2>
+          <p>{{ appeal.userEmail }}</p>
+        </div>
+        <span class="status-pill" [ngClass]="getAppealTone(appeal.status)">
+          <app-admin-icon [name]="appeal.status === 'Open' ? 'clock' : appeal.status === 'Accepted' ? 'check' : 'ban'" [size]="14"></app-admin-icon>
+          {{ appeal.status }}
+        </span>
+      </div>
+
+      <dl class="detail-list">
+        <div>
+          <dt>Original action</dt>
+          <dd>{{ formatOriginalAction(appeal) }}</dd>
+        </div>
+        <div>
+          <dt>Target</dt>
+          <dd>{{ appeal.targetType }} {{ appeal.targetId }}</dd>
+        </div>
+        <div>
+          <dt>Submitted</dt>
+          <dd>{{ appeal.createdAtUtc | date: 'medium' }}</dd>
+        </div>
+        <div>
+          <dt>Resolved</dt>
+          <dd>{{ appeal.resolvedAtUtc ? (appeal.resolvedAtUtc | date: 'medium') : 'Open' }}</dd>
+        </div>
+      </dl>
+
+      <section class="detail-section">
+        <h3>User explanation</h3>
+        <p>{{ appeal.reason || 'No explanation was provided.' }}</p>
+      </section>
+
+      <div class="detail-actions" *ngIf="appeal.status === 'Open'; else closedAppealActions">
+        <button type="button" class="admin-button" (click)="updateAppealStatus(appeal, 'Accepted')" [disabled]="isUpdating">
+          <app-admin-icon name="check" [size]="18"></app-admin-icon>
+          Accept
+        </button>
+        <button type="button" class="admin-button secondary" (click)="updateAppealStatus(appeal, 'Rejected')" [disabled]="isUpdating">
+          <app-admin-icon name="ban" [size]="18"></app-admin-icon>
+          Reject
+        </button>
+      </div>
+
+      <ng-template #closedAppealActions>
+        <div class="detail-actions">
+          <button type="button" class="admin-button secondary" (click)="updateAppealStatus(appeal, 'Open')" [disabled]="isUpdating">
+            <app-admin-icon name="clock" [size]="18"></app-admin-icon>
+            Reopen
+          </button>
+        </div>
+      </ng-template>
+
+      <button type="button" class="admin-button secondary full" (click)="openUserProfile(appeal)">
+        <app-admin-icon name="external-link" [size]="17"></app-admin-icon>
+        Open user profile
+      </button>
+    </aside>
+
+    <ng-template #noSelection>
+      <aside class="admin-detail-pane admin-card empty">
+        <strong>No appeal selected.</strong>
+        <p>Select an appeal from the list to review it.</p>
+      </aside>
+    </ng-template>
+  </div>
+</section>

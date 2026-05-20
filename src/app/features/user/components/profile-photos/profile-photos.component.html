@@ -1,0 +1,135 @@
+<article class="social-card profile-summary-card profile-photos-card">
+  <header class="mini-head profile-photos-head">
+    <div>
+      <h2>Photos</h2>
+      <p>Your profile media and albums.</p>
+    </div>
+
+    <div class="profile-photos-actions">
+      <button
+        *ngIf="isOwnProfile"
+        type="button"
+        class="dashboard-button"
+        (click)="openUploadModal()">
+        Add photos/video
+      </button>
+      <button type="button" class="profile-photo-icon-button" aria-label="Search photos" (click)="toggleSearch()">
+        <app-admin-icon name="search" [size]="18"></app-admin-icon>
+      </button>
+      <button type="button" class="profile-photo-icon-button" aria-label="Photo options">
+        <app-admin-icon name="more" [size]="18"></app-admin-icon>
+      </button>
+    </div>
+  </header>
+
+  <div class="profile-photo-tabs ts-scroll-row">
+    <button type="button" [class.active]="activeTab === 'photos'" (click)="selectTab('photos')">Your photos</button>
+    <button type="button" [class.active]="activeTab === 'albums'" (click)="selectTab('albums')">Albums</button>
+  </div>
+
+  <label class="profile-photo-search" *ngIf="isSearchOpen">
+    <span>Search photos</span>
+    <input type="search" [(ngModel)]="searchQuery" placeholder="Search by name or type">
+  </label>
+
+  <p class="dashboard-hint" *ngIf="successMessage">{{ successMessage }}</p>
+  <p class="dashboard-error" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+  <ng-container *ngIf="activeTab === 'photos'; else albumsView">
+    <p class="dashboard-hint" *ngIf="isLoadingPhotos">Loading photos...</p>
+
+    <div class="profile-photo-grid" *ngIf="!isLoadingPhotos && visiblePhotos.length; else emptyPhotos">
+      <article class="profile-photo-item" *ngFor="let photo of visiblePhotos; trackBy: trackByPhotoId">
+        <img
+          *ngIf="photo.mediaType === 'Image'; else videoPreview"
+          [src]="photo.mediaUrl"
+          [attr.alt]="photo.originalFileName || 'Profile photo'">
+
+        <ng-template #videoPreview>
+          <video [src]="photo.mediaUrl" muted playsinline></video>
+          <span class="profile-photo-type">Video</span>
+        </ng-template>
+
+        <button
+          type="button"
+          class="profile-photo-edit"
+          aria-label="Edit photo"
+          (click)="showEditNotice($event)">
+          <app-admin-icon name="pencil" [size]="15"></app-admin-icon>
+        </button>
+      </article>
+    </div>
+
+    <ng-template #emptyPhotos>
+      <div class="dashboard-empty" *ngIf="!isLoadingPhotos">
+        <strong>No photos yet.</strong>
+        <p *ngIf="isOwnProfile; else viewerEmptyPhotos">Add photos or videos and they will appear here.</p>
+        <ng-template #viewerEmptyPhotos>
+          <p>This member has not added public profile photos yet.</p>
+        </ng-template>
+      </div>
+    </ng-template>
+  </ng-container>
+
+  <ng-template #albumsView>
+    <p class="dashboard-hint" *ngIf="isLoadingAlbums">Loading albums...</p>
+
+    <div class="profile-album-grid" *ngIf="!isLoadingAlbums && albums.length; else emptyAlbums">
+      <article class="profile-album-card" *ngFor="let album of albums; trackBy: trackByAlbumId">
+        <div
+          class="profile-album-cover"
+          [style.background-image]="album.coverImageUrl ? 'url(' + album.coverImageUrl + ')' : null">
+          <app-admin-icon *ngIf="!album.coverImageUrl" name="image" [size]="24"></app-admin-icon>
+        </div>
+        <strong>{{ album.name }}</strong>
+        <span>{{ album.photoCount }} {{ album.photoCount === 1 ? 'photo' : 'photos' }}</span>
+      </article>
+    </div>
+
+    <ng-template #emptyAlbums>
+      <div class="dashboard-empty" *ngIf="!isLoadingAlbums">
+        <strong>No albums yet.</strong>
+        <p>Albums will appear here once they are created.</p>
+      </div>
+    </ng-template>
+  </ng-template>
+</article>
+
+<app-modal-shell *ngIf="isUploadModalOpen" size="lg" (closed)="closeUploadModal()">
+  <article class="dialog-card profile-upload-modal">
+    <header class="composer-head composer-head--stacked">
+      <div>
+        <h2>Add photos/video</h2>
+        <p>Choose an image or video, preview it, then save it to this profile.</p>
+      </div>
+    </header>
+
+    <label class="dashboard-field">
+      <span>Media</span>
+      <input type="file" accept="image/*,video/*" (change)="onUploadFileSelected($event)">
+    </label>
+
+    <div class="profile-upload-preview" *ngIf="previewUrl; else noUploadPreview">
+      <img *ngIf="previewMediaType === 'Image'; else uploadVideoPreview" [src]="previewUrl" alt="Selected media preview">
+      <ng-template #uploadVideoPreview>
+        <video [src]="previewUrl" controls playsinline></video>
+      </ng-template>
+    </div>
+
+    <ng-template #noUploadPreview>
+      <div class="dashboard-empty profile-upload-empty">
+        <strong>No media selected.</strong>
+        <p>Select an image or video to preview it here before saving.</p>
+      </div>
+    </ng-template>
+
+    <p class="dashboard-error" *ngIf="uploadErrorMessage">{{ uploadErrorMessage }}</p>
+
+    <div class="profile-upload-actions">
+      <button type="button" class="dashboard-button secondary" (click)="closeUploadModal()">Cancel</button>
+      <button type="button" class="dashboard-button" [disabled]="!selectedFile || isSavingUpload" (click)="saveUpload()">
+        {{ isSavingUpload ? 'Saving...' : 'Save media' }}
+      </button>
+    </div>
+  </article>
+</app-modal-shell>

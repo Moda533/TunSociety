@@ -1,0 +1,190 @@
+<div class="admin-shell member-shell">
+  <div
+    class="pull-refresh-indicator"
+    [class.visible]="pullDistance > 0 || isPullRefreshing"
+    [class.ready]="pullProgress >= 1"
+    [class.refreshing]="isPullRefreshing"
+    [style.transform]="pullIndicatorTransform"
+    aria-hidden="true">
+    <app-admin-icon name="refresh" [size]="22"></app-admin-icon>
+  </div>
+
+  <header class="admin-topbar">
+    <a class="admin-brand" routerLink="/dashboard/feed">
+      <span class="admin-brand-mark">
+        <img src="/assets/logo.png" alt="" aria-hidden="true">
+      </span>
+      <span class="admin-brand-copy">
+        <strong>TunSociety</strong>
+        <small>User</small>
+      </span>
+    </a>
+
+    <nav class="admin-nav" [class.mobile-open]="isMobileNavOpen" aria-label="User navigation">
+      <a routerLink="/dashboard/feed" routerLinkActive="active" queryParamsHandling="preserve" (click)="closeMobileNav()">Feed</a>
+      <a routerLink="/dashboard/search" routerLinkActive="active" queryParamsHandling="preserve" (click)="closeMobileNav()">Search</a>
+      <a routerLink="/dashboard/requests" routerLinkActive="active" queryParamsHandling="preserve" (click)="closeMobileNav()">Network</a>
+      <a routerLink="/dashboard/messenger" routerLinkActive="active" queryParamsHandling="preserve" (click)="closeMobileNav()">Messages</a>
+      <a routerLink="/dashboard/notifications" routerLinkActive="active" queryParamsHandling="preserve" (click)="closeMobileNav()">Notifications</a>
+      <a routerLink="/dashboard/profile" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" queryParamsHandling="preserve" (click)="closeMobileNav()">Profile</a>
+    </nav>
+
+    <div class="admin-mobile-actions">
+      <button
+        type="button"
+        class="admin-icon-button"
+        aria-label="Open search"
+        [attr.aria-expanded]="isSearchOpen"
+        (click)="toggleSearch($event)">
+        <app-admin-icon name="search" [size]="18"></app-admin-icon>
+      </button>
+
+      <button
+        type="button"
+        class="admin-icon-button admin-menu-button"
+        aria-label="Open user menu"
+        [attr.aria-expanded]="isMobileNavOpen"
+        (click)="toggleMobileNav($event)">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+
+    <form class="admin-search" [class.mobile-open]="isSearchOpen" (click)="onSearchContainerClick($event)" (ngSubmit)="submitSearch()">
+      <input
+        #dashboardSearchInput
+        type="search"
+        [formControl]="searchControl"
+        placeholder="Search"
+        aria-label="Search community">
+      <button type="submit">Search</button>
+      <button *ngIf="searchControl.value.trim()" type="button" class="ghost" (click)="clearSearch()">Clear</button>
+    </form>
+
+    <div class="admin-user-menu" [class.open]="isAccountMenuOpen" (click)="onAccountMenuContainerClick($event)">
+      <button
+        type="button"
+        class="admin-user-trigger"
+        aria-label="Open account menu"
+        aria-haspopup="menu"
+        [attr.aria-expanded]="isAccountMenuOpen"
+        (click)="toggleAccountMenu($event)">
+        <span class="member-avatar" [style.background-image]="'url(' + currentUserAvatarUrl() + ')'">
+          {{ currentUserAvatarUrl() ? '' : currentUserInitials }}
+        </span>
+      </button>
+
+      <div class="admin-user-popover admin-context-menu" *ngIf="isAccountMenuOpen" role="menu" aria-label="User account menu">
+        <div class="admin-menu-summary">
+          <span class="member-avatar" [style.background-image]="'url(' + currentUserAvatarUrl() + ')'">
+            {{ currentUserAvatarUrl() ? '' : currentUserInitials }}
+          </span>
+          <div>
+            <strong>{{ currentUserName() }}</strong>
+            <span>{{ currentUserRole() }} &middot; {{ currentUserStatus }} account</span>
+          </div>
+        </div>
+
+        <div class="admin-menu-separator"></div>
+
+        <a class="admin-menu-item" role="menuitem" routerLink="/dashboard/profile" (click)="closeAccountMenu()">
+          <span class="admin-menu-icon"><app-admin-icon name="user" [size]="17"></app-admin-icon></span>
+          <span>Profile</span>
+        </a>
+
+        <a class="admin-menu-item" role="menuitem" routerLink="/dashboard/feed" (click)="closeAccountMenu()">
+          <span class="admin-menu-icon"><app-admin-icon name="dashboard" [size]="17"></app-admin-icon></span>
+          <span>Feed</span>
+        </a>
+
+        <a class="admin-menu-item" role="menuitem" routerLink="/dashboard/messenger" (click)="closeAccountMenu()">
+          <span class="admin-menu-icon"><app-admin-icon name="message" [size]="17"></app-admin-icon></span>
+          <span>Messages</span>
+        </a>
+
+        <a class="admin-menu-item" role="menuitem" routerLink="/dashboard/settings" (click)="closeAccountMenu()">
+          <span class="admin-menu-icon"><app-admin-icon name="settings" [size]="17"></app-admin-icon></span>
+          <span>Settings</span>
+        </a>
+
+        <a class="admin-menu-item" role="menuitem" *ngIf="canOpenModeration()" routerLink="/moderation" (click)="closeAccountMenu()">
+          <span class="admin-menu-icon"><app-admin-icon name="shield" [size]="17"></app-admin-icon></span>
+          <span>Moderation</span>
+        </a>
+
+        <a class="admin-menu-item" role="menuitem" *ngIf="canOpenAdmin()" routerLink="/admin" (click)="closeAccountMenu()">
+          <span class="admin-menu-icon"><app-admin-icon name="dashboard" [size]="17"></app-admin-icon></span>
+          <span>Admin dashboard</span>
+        </a>
+
+        <div class="admin-menu-separator"></div>
+
+        <button type="button" class="admin-menu-item danger" role="menuitem" (click)="logout()">
+          <span class="admin-menu-icon"><app-admin-icon name="logout" [size]="17"></app-admin-icon></span>
+          <span>Sign out</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="admin-workspace">
+    <aside class="admin-sidebar" aria-label="User sections">
+      <div class="admin-sidebar-section">
+        <span>Workspace</span>
+        <nav class="admin-side-nav" aria-label="User workspace navigation">
+          <a routerLink="/dashboard/feed" routerLinkActive="active" queryParamsHandling="preserve">
+            <span class="admin-side-icon"><app-admin-icon name="dashboard" [size]="19"></app-admin-icon></span>
+            <span>Feed</span>
+          </a>
+          <a routerLink="/dashboard/search" routerLinkActive="active" queryParamsHandling="preserve">
+            <span class="admin-side-icon"><app-admin-icon name="search" [size]="19"></app-admin-icon></span>
+            <span>Search</span>
+          </a>
+          <a routerLink="/dashboard/requests" routerLinkActive="active" queryParamsHandling="preserve">
+            <span class="admin-side-icon-stack">
+              <span class="admin-side-icon"><app-admin-icon name="users" [size]="19"></app-admin-icon></span>
+              <span class="admin-side-dot" *ngIf="badgeSummary.hasPendingFriendRequests" aria-hidden="true"></span>
+            </span>
+            <span>Network</span>
+          </a>
+          <a routerLink="/dashboard/messenger" routerLinkActive="active" queryParamsHandling="preserve">
+            <span class="admin-side-icon-stack">
+              <span class="admin-side-icon"><app-admin-icon name="message" [size]="19"></app-admin-icon></span>
+              <span class="admin-side-dot" *ngIf="badgeSummary.hasUnreadMessages" aria-hidden="true"></span>
+            </span>
+            <span>Messages</span>
+          </a>
+          <a routerLink="/dashboard/notifications" routerLinkActive="active" queryParamsHandling="preserve">
+            <span class="admin-side-icon-stack">
+              <span class="admin-side-icon"><app-admin-icon name="notification" [size]="19"></app-admin-icon></span>
+              <span
+                class="admin-side-count"
+                *ngIf="badgeSummary.unreadNotificationsCount > 0"
+                [attr.aria-label]="badgeSummary.unreadNotificationsCount + ' unread notifications'">{{ badgeSummary.unreadNotificationsCount }}</span>
+            </span>
+            <span>Notifications</span>
+          </a>
+          <a routerLink="/dashboard/profile" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" queryParamsHandling="preserve">
+            <span class="admin-side-icon"><app-admin-icon name="user" [size]="19"></app-admin-icon></span>
+            <span>Profile</span>
+          </a>
+          <a routerLink="/dashboard/settings" routerLinkActive="active" queryParamsHandling="preserve">
+            <span class="admin-side-icon"><app-admin-icon name="settings" [size]="19"></app-admin-icon></span>
+            <span>Settings</span>
+          </a>
+        </nav>
+      </div>
+
+      <div class="admin-sidebar-card">
+        <span>Community flow</span>
+        <strong>Share, connect, respond</strong>
+        <p>Use the feed for public updates, messages for private coordination, and notifications to follow new activity.</p>
+      </div>
+    </aside>
+
+    <main class="admin-main">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

@@ -1,4 +1,4 @@
-<div class="modal-shell__backdrop" (click)="onBackdropClick($event)">
+<div class="modal-shell__backdrop" [style.z-index]="zIndex" (click)="onBackdropClick($event)">
   <section
     #frame
     class="modal-shell__frame"
@@ -10,7 +10,7 @@
     [attr.aria-describedby]="ariaDescribedBy || null"
     tabindex="-1">
     <button type="button" class="modal-shell__close" aria-label="Close dialog" (click)="requestClose()">
-      <span aria-hidden="true">×</span>
+      <span aria-hidden="true">X</span>
     </button>
 
     <div class="modal-shell__surface">

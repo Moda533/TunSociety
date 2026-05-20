@@ -1,0 +1,71 @@
+<div
+  class="admin-shell guest-shell"
+  [class.guest-shell--about]="pageId === 'about'"
+  [class.guest-shell--features]="pageId === 'features'"
+  [class.guest-shell--policy]="pageId === 'policy'"
+  [class.guest-shell--contact]="pageId === 'contact'">
+  <header class="admin-topbar">
+    <a class="admin-brand" routerLink="/about" (click)="closeMobileNav()">
+      <span class="admin-brand-mark">
+        <img src="/assets/logo.png" alt="" aria-hidden="true">
+      </span>
+      <span class="admin-brand-copy">
+        <strong>TunSociety</strong>
+        <small>Guest</small>
+      </span>
+    </a>
+
+    <nav class="admin-nav" [class.mobile-open]="isMobileNavOpen" aria-label="Guest navigation">
+      <a routerLink="/about" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMobileNav()">About</a>
+      <a routerLink="/features" routerLinkActive="active" (click)="closeMobileNav()">Features</a>
+      <a routerLink="/policy" routerLinkActive="active" (click)="closeMobileNav()">Policy</a>
+      <a routerLink="/contact" routerLinkActive="active" (click)="closeMobileNav()">Contact</a>
+    </nav>
+
+    <div class="guest-top-actions">
+      <a class="admin-button secondary" routerLink="/auth">Sign in</a>
+      <a class="admin-button" routerLink="/auth" [queryParams]="{ mode: 'signup' }">Create account</a>
+    </div>
+
+    <div class="admin-mobile-actions">
+      <a class="admin-icon-button" routerLink="/auth" aria-label="Sign in">
+        <app-admin-icon name="user" [size]="17"></app-admin-icon>
+      </a>
+
+      <button
+        type="button"
+        class="admin-icon-button admin-menu-button"
+        aria-label="Open guest menu"
+        [attr.aria-expanded]="isMobileNavOpen"
+        (click)="toggleMobileNav($event)">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </header>
+
+  <div class="admin-workspace guest-workspace">
+    <main class="admin-main guest-main">
+      <section class="guest-floating-cards" aria-label="Guest highlights">
+        <article
+          class="guest-feature-card"
+          *ngFor="let card of page.cards; let cardIndex = index; trackBy: trackByGuestCard"
+          [class.dragging]="draggingGuestCardIndex === cardIndex"
+          [class.sliding]="slidingGuestCardIndex === cardIndex"
+          [style.left]="getGuestCardLeft(cardIndex)"
+          [style.top]="getGuestCardTop(cardIndex)"
+          [style.z-index]="getGuestCardZIndex(cardIndex)"
+          [attr.aria-grabbed]="draggingGuestCardIndex === cardIndex"
+          tabindex="0"
+          (pointerdown)="startGuestCardDrag(cardIndex, $event)">
+          <span class="guest-card-index">{{ card.index }}</span>
+          <div>
+            <h2>{{ card.title }}</h2>
+            <p>{{ card.text }}</p>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+</div>

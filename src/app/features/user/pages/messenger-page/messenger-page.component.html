@@ -1,0 +1,803 @@
+<section class="social-page messenger-page">
+  <div
+    class="chat-shell social-card"
+    [class.chat-shell--mobile-list]="isMobileListMode"
+    [class.chat-shell--chat-only]="isMobileChatMode">
+    <aside class="conversation-panel">
+      <div class="panel-head">
+        <div class="panel-title-copy">
+          <h2>Chats</h2>
+          <p class="panel-subtitle">{{ unreadConversationCount }} unread conversations</p>
+        </div>
+
+        <div class="panel-actions">
+          <div class="chat-tools-menu" (click)="$event.stopPropagation()">
+            <button type="button" class="icon-button" aria-label="Chat tools" [attr.aria-expanded]="isChatToolsOpen" (click)="toggleChatTools($event)">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="3"></circle>
+                <circle cx="12" cy="5" r="1.5"></circle>
+                <circle cx="12" cy="19" r="1.5"></circle>
+                <circle cx="5" cy="12" r="1.5"></circle>
+                <circle cx="19" cy="12" r="1.5"></circle>
+              </svg>
+            </button>
+
+            <div class="chat-tools-dropdown" *ngIf="isChatToolsOpen" role="menu">
+              <button type="button" role="menuitem" (click)="openGroupComposer()">Create group chat</button>
+              <button type="button" role="menuitem" (click)="applyConversationFilter('groups')">My groups</button>
+              <button type="button" role="menuitem" (click)="applyConversationFilter('archived')">Archived chats</button>
+              <button type="button" role="menuitem" (click)="applyConversationFilter('unread')">Unread conversations</button>
+              <button type="button" role="menuitem" disabled>Message requests</button>
+              <button type="button" role="menuitem" disabled>Blocked users</button>
+              <button type="button" role="menuitem" disabled>Chat settings</button>
+            </div>
+          </div>
+          <button type="button" class="icon-button icon-button--accent" aria-label="New conversation" (click)="openNewConversationPopup()">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 5v14M5 12h14"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="search-box">
+        <button type="button" class="search-box-icon" aria-label="Search conversations" (click)="openSearchPopup()">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="m20 20-3.5-3.5"></path>
+          </svg>
+        </button>
+        <input
+          type="text"
+          [formControl]="discoverControl"
+          placeholder="Search Messenger"
+          aria-label="Search conversations">
+      </div>
+
+      <div class="conversation-list" *ngIf="filteredConversations.length; else emptyConversations">
+        <button
+          type="button"
+          class="conversation-row"
+          *ngFor="let conversation of filteredConversations; trackBy: trackByConversationId"
+          [class.active]="getConversationId(conversation) === selectedConversationId"
+          [class.conversation-row--group]="conversation.conversationType === 'Group'"
+          (click)="selectConversation(getConversationId(conversation))">
+          <span
+            class="avatar"
+            [class.avatar--pink]="conversation.conversationType !== 'Group'"
+            [class.avatar--group]="conversation.conversationType === 'Group'"
+            [style.background-image]="'url(' + getConversationAvatar(conversation) + ')'">
+            {{ getConversationAvatar(conversation) ? '' : (conversation.conversationType === 'Group' ? 'G' : conversation.partnerName.charAt(0).toUpperCase()) }}
+          </span>
+          <div class="conversation-copy">
+            <div class="conversation-topline">
+              <strong>{{ conversation.partnerName }}</strong>
+              <small>{{ formatConversationTime(conversation.lastMessageAtUtc) }}</small>
+            </div>
+            <span>{{ conversation.conversationType === 'Group' ? conversation.memberCount + ' members' : conversation.partnerRole }}</span>
+            <p>{{ conversation.messages[conversation.messages.length - 1]?.content || 'No messages yet' }}</p>
+          </div>
+          <span class="presence-dot" [class.presence-dot--online]="conversation.isPartnerOnline || conversation.conversationType === 'Group'"></span>
+          <span class="unread-pill" *ngIf="conversation.unreadCount">{{ conversation.unreadCount }}</span>
+        </button>
+      </div>
+
+      <ng-template #emptyConversations>
+        <div class="dashboard-empty conversation-empty">
+          <strong>No conversations found.</strong>
+          <p>Try another search or open a new conversation.</p>
+        </div>
+      </ng-template>
+    </aside>
+
+    <section class="chat-panel">
+      <header class="chat-header" *ngIf="!isGroupSettingsMode">
+        <button type="button" class="chat-back-button" *ngIf="isMobileChatMode" (click)="backToConversationList()" aria-label="Back to conversations">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m15 18-6-6 6-6"></path>
+          </svg>
+          <span>Chats</span>
+        </button>
+        <div class="chat-partner">
+            <span
+            class="avatar chat-partner-avatar"
+            [class.avatar--pink]="selectedConversation?.conversationType !== 'Group'"
+            [class.avatar--group]="selectedConversation?.conversationType === 'Group'"
+            [style.background-image]="'url(' + getRecipientAvatarUrl() + ')'">
+            {{ getRecipientAvatarUrl() ? '' : getPartnerAvatarFallbackInitial() }}
+          </span>
+          <div class="chat-partner-copy">
+            <h3>{{ activePartnerName }}</h3>
+            <div class="chat-partner-status">
+              <span class="presence-dot presence-dot--inline" [class.presence-dot--online]="selectedConversation?.isPartnerOnline"></span>
+              <span>{{ selectedConversationStatus }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-tools">
+          <span class="unread-pill unread-pill--header" *ngIf="activeConversationUnread">{{ activeConversationUnread }}</span>
+          <button type="button" class="chat-header-icon-button" *ngIf="selectedGroupConversation" aria-label="Group settings" (click)="openGroupSettings()">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16"></path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="messages-thread" #chatLog *ngIf="!isGroupSettingsMode">
+        <ng-container *ngIf="activeMessages.length; else emptyThread">
+          <ng-container *ngFor="let item of timelineFor(activeMessages); trackBy: trackByTimelineItem">
+            <div class="message-divider" *ngIf="item.kind === 'date'">
+              <span>{{ item.label }}</span>
+            </div>
+
+            <div
+              *ngIf="item.kind === 'message'"
+              class="message-row"
+              [class.message-row--outgoing]="item.message.senderUserId === userId"
+              [class.message-row--incoming]="item.message.senderUserId !== userId"
+              [attr.data-message-id]="item.message.id"
+              [attr.data-message-sender-id]="item.message.senderUserId">
+              <article
+                class="bubble"
+                [class.bubble--outgoing]="item.message.senderUserId === userId"
+                [class.bubble--incoming]="item.message.senderUserId !== userId">
+                <p>
+                  <ng-container *ngFor="let segment of formatMessageSegments(item.message.content); trackBy: trackByMessageTextSegment">
+                    <a
+                      *ngIf="segment.kind === 'link'"
+                      class="message-link"
+                      [href]="segment.url"
+                      (click)="openMessageLink(segment.url, $event)">
+                      {{ segment.text }}
+                    </a>
+                    <ng-container *ngIf="segment.kind === 'text'">{{ segment.text }}</ng-container>
+                  </ng-container>
+                </p>
+                <small>{{ formatMessageTime(item.message.createdAtUtc) }}</small>
+              </article>
+
+              <span
+                class="message-read-cursor"
+                *ngIf="selectedConversation?.conversationType === 'Private' && item.message.senderUserId === userId && selectedConversation?.partnerLastVisibleMessageId === item.message.id"
+                [class.message-read-cursor--outgoing]="item.message.senderUserId === userId"
+                [class.message-read-cursor--incoming]="item.message.senderUserId !== userId"
+                [title]="getPartnerReadCursorLabel()">
+                <span
+                  class="avatar message-read-cursor-avatar"
+                  [style.background-image]="'url(' + getRecipientAvatarUrl() + ')'">
+                  {{ getRecipientAvatarUrl() ? '' : getPartnerAvatarFallbackInitial() }}
+                </span>
+              </span>
+            </div>
+          </ng-container>
+        </ng-container>
+
+        <ng-template #emptyThread>
+          <div class="group-empty-state" *ngIf="shouldShowGroupEmptyState; else defaultEmptyThread">
+            <span class="group-empty-icon">{{ getPartnerAvatarFallbackInitial() }}</span>
+            <strong>You created the group.</strong>
+            <p>Complete the group profile to make it more special.</p>
+            <div class="group-empty-actions">
+              <button type="button" (click)="openGroupProfileQuickAction('name')">Name Group</button>
+              <button type="button" (click)="openGroupProfileQuickAction('intro')">Set Group Introduction</button>
+              <button type="button" (click)="openGroupProfileQuickAction('members')">Add Members</button>
+            </div>
+          </div>
+          <ng-template #defaultEmptyThread>
+            <div class="dashboard-empty thread-empty">
+            <strong>Select a conversation</strong>
+            <p>Pick an existing chat or search for a person to start a new one.</p>
+            </div>
+          </ng-template>
+        </ng-template>
+      </div>
+
+      <div class="group-membership-gate" *ngIf="!isGroupSettingsMode && shouldShowGroupMembershipGate">
+        <div>
+          <strong>You were added to {{ selectedGroupConversation?.partnerName }}.</strong>
+          <p>Stay to send and receive group messages, or leave to hide this chat.</p>
+        </div>
+        <div class="group-membership-actions">
+          <button type="button" class="dashboard-button" (click)="acceptGroupMembership()">Stay in group</button>
+          <button type="button" class="dashboard-button secondary" (click)="requestLeaveGroup()">Leave group</button>
+        </div>
+        <p class="dashboard-error" *ngIf="groupSettingsMessage">{{ groupSettingsMessage }}</p>
+      </div>
+
+      <form class="chat-composer" *ngIf="!isGroupSettingsMode && !shouldShowGroupMembershipGate" (ngSubmit)="sendMessage()">
+        <label class="dashboard-field composer-field">
+          <div class="composer-toolbar">
+            <button type="button" class="composer-tool" (click)="insertComposerSnippet('😀')" aria-label="Emoji">😊</button>
+            <button type="button" class="composer-tool" (click)="flagComposerFeature('Image upload')" aria-label="Image upload">🖼</button>
+            <button type="button" class="composer-tool" (click)="flagComposerFeature('GIF picker')" aria-label="GIF picker">GIF</button>
+            <button type="button" class="composer-tool" (click)="flagComposerFeature('Voice message')" aria-label="Voice message">🎙</button>
+            <button type="button" class="composer-tool" (click)="insertComposerSnippet('👍')" aria-label="Quick like">👍</button>
+          </div>
+
+          <input
+            type="text"
+            [formControl]="chatInputControl"
+            placeholder="Aa"
+            aria-label="Write a message">
+        </label>
+
+        <p class="composer-hint" *ngIf="composerHintMessage">{{ composerHintMessage }}</p>
+
+        <div class="composer-row">
+          <p class="dashboard-error" *ngIf="errorMessage">{{ errorMessage }}</p>
+          <button type="submit" class="dashboard-button" [disabled]="isSending || !canSendInSelectedConversation || !chatInputControl.value.trim()">
+            {{ isSending ? 'Sending...' : 'Send message' }}
+          </button>
+        </div>
+      </form>
+
+      <section class="group-settings-screen" *ngIf="isGroupSettingsMode && selectedGroupConversation as group">
+        <header class="group-settings-header">
+          <button type="button" class="chat-back-button" (click)="backToGroupChat()" aria-label="Back to group chat">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m15 18-6-6 6-6"></path>
+            </svg>
+            <span>Chat</span>
+          </button>
+          <h3>Group settings</h3>
+        </header>
+
+        <div class="group-settings-scroll">
+          <section class="group-settings-profile">
+            <span class="avatar avatar--group group-settings-avatar" [style.background-image]="'url(' + (group.avatarUrl || '') + ')'">
+              {{ group.avatarUrl ? '' : group.partnerName.charAt(0).toUpperCase() }}
+            </span>
+            <div>
+              <h2>{{ group.partnerName }}</h2>
+              <p>{{ group.memberCount }} members · {{ activeGroupRoleLabel }}</p>
+            </div>
+            <button type="button" class="group-settings-menu-button" aria-label="Group actions" (click)="openGroupSettingsPopup('menu')">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 7h16M4 12h16M4 17h16"></path>
+              </svg>
+            </button>
+          </section>
+
+          <p class="dashboard-error" *ngIf="groupSettingsMessage">{{ groupSettingsMessage }}</p>
+
+          <section class="group-settings-section">
+            <button type="button" class="group-settings-row" (click)="openGroupSettingsPopup('introduction')" [disabled]="!group.currentUserCanEditGroup">
+              <span>Group Introduction</span>
+              <small>{{ group.groupIntroduction || 'Not set' }}</small>
+            </button>
+            <button type="button" class="group-settings-row" (click)="openGroupSettingsPopup('notice')" [disabled]="!group.currentUserCanEditGroup">
+              <span>Group Notice</span>
+              <small>{{ group.groupNotice || 'Not set' }}</small>
+            </button>
+            <button type="button" class="group-settings-row" [disabled]="!group.currentUserCanManageMembers" (click)="openGroupSettingsPopup('members')">
+              <span>Set Admin</span>
+              <small>Use member actions below</small>
+            </button>
+            <button type="button" class="group-settings-row" (click)="openGroupSettingsPopup('join-requests')">
+              <span>Join Requests</span>
+              <small>No pending requests</small>
+            </button>
+            <button type="button" class="group-settings-row" [disabled]="!group.currentUserCanManageMembers" (click)="openGroupSettingsPopup('permission')">
+              <span>Create-Room Permission</span>
+              <small>{{ group.createRoomPermission || 'Admins and moderators' }}</small>
+            </button>
+          </section>
+
+          <section class="group-settings-section">
+            <button type="button" class="group-settings-row" [disabled]="!group.currentUserCanEditGroup" (click)="openAddMembers()">
+              <span>Add Member</span>
+              <small>Invite people from your network</small>
+            </button>
+            <button type="button" class="group-settings-row" (click)="openGroupSettingsPopup('invite')">
+              <span>Copy Invite Link</span>
+              <small>{{ group.inviteCode || 'Unavailable' }}</small>
+            </button>
+            <button type="button" class="group-settings-row" (click)="openGroupSettingsPopup('members')">
+              <span>See Group Members</span>
+              <small>{{ group.memberCount }} members</small>
+            </button>
+          </section>
+
+          <section class="group-members-management" *ngIf="false">
+            <article class="group-member-row" *ngFor="let member of visibleGroupMembers; trackBy: trackByGroupMemberId">
+              <span class="avatar avatar--purple" [style.background-image]="'url(' + (member.avatarUrl || '') + ')'">
+                {{ member.avatarUrl ? '' : member.displayName.charAt(0).toUpperCase() }}
+              </span>
+              <div>
+                <strong>{{ member.displayName }}</strong>
+                <span>{{ formatGroupRole(member.role) }} · {{ member.status }}</span>
+              </div>
+              <div class="group-member-actions" *ngIf="group.currentUserCanManageMembers && !member.isCurrentUser && member.role !== 'Owner'">
+                <button type="button" (click)="updateGroupMemberRole(member, 'Admin')">Admin</button>
+                <button type="button" (click)="updateGroupMemberRole(member, 'Moderator')">Mod</button>
+                <button type="button" (click)="updateGroupMemberRole(member, 'Member')">Member</button>
+                <button type="button" class="danger" (click)="removeManagedGroupMember(member)">Remove</button>
+              </div>
+            </article>
+          </section>
+
+          <section class="group-settings-section">
+            <button type="button" class="group-settings-row" (click)="openGroupSettingsPopup('pin')">
+              <span>Pin to top of chat list</span>
+              <small>{{ group.isPinned ? 'On' : 'Off' }}</small>
+            </button>
+            <button type="button" class="group-settings-row" (click)="openGroupSettingsPopup('mute')">
+              <span>Mute Notifications</span>
+              <small>{{ group.isMuted ? 'Muted' : 'On' }}</small>
+            </button>
+            <button type="button" class="group-settings-row" (click)="openGroupSettingsPopup('clear-history')">
+              <span>Clear Chat History</span>
+              <small>Only clears your view</small>
+            </button>
+            <button type="button" class="group-settings-row" (click)="openGroupSettingsPopup('report')">
+              <span>Report</span>
+              <small>Send report to moderators</small>
+            </button>
+            <button type="button" class="group-settings-row danger" (click)="openGroupSettingsPopup('delete')">
+              <span>{{ group.currentUserCanDeleteGroup ? 'Delete and Exit' : 'Leave Group' }}</span>
+              <small>{{ group.currentUserCanDeleteGroup ? 'Remove group for everyone' : 'Hide this group from your chats' }}</small>
+            </button>
+          </section>
+        </div>
+      </section>
+    </section>
+  </div>
+
+  <app-modal-shell *ngIf="activeGroupSettingsPopup && selectedGroupConversation as group" size="lg" (closed)="closeGroupSettingsPopup()">
+    <article class="dialog-card group-settings-popup" [ngSwitch]="activeGroupSettingsPopup">
+      <ng-container *ngSwitchCase="'menu'">
+        <header class="group-popup-header">
+          <div>
+            <h3>{{ group.partnerName }}</h3>
+            <p>{{ group.memberCount }} members - {{ activeGroupRoleLabel }}</p>
+          </div>
+        </header>
+        <div class="group-popup-menu">
+          <button type="button" *ngIf="group.currentUserCanEditGroup" (click)="openGroupSettingsPopup('profile')">
+            <span>Edit group profile</span>
+            <small>Name and local picture</small>
+          </button>
+          <button type="button" *ngIf="group.currentUserCanEditGroup" (click)="openGroupSettingsPopup('introduction')">
+            <span>Group Introduction</span>
+            <small>{{ group.groupIntroduction || 'Not set' }}</small>
+          </button>
+          <button type="button" *ngIf="group.currentUserCanEditGroup" (click)="openGroupSettingsPopup('notice')">
+            <span>Group Notice</span>
+            <small>{{ group.groupNotice || 'Not set' }}</small>
+          </button>
+          <button type="button" (click)="openGroupSettingsPopup('members')">
+            <span>Group members</span>
+            <small>View and manage roles</small>
+          </button>
+          <button type="button" (click)="openGroupSettingsPopup('invite')">
+            <span>Invite link</span>
+            <small>{{ group.inviteCode || 'Unavailable' }}</small>
+          </button>
+        </div>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'profile'">
+        <header class="group-popup-header">
+          <div>
+            <h3>Edit group profile</h3>
+            <p>Choose a local image and update the group name.</p>
+          </div>
+        </header>
+        <div class="group-popup-body">
+          <label class="group-photo-picker">
+            <span class="avatar avatar--group group-photo-preview" [style.background-image]="'url(' + groupAvatarPreviewUrl + ')'">
+              {{ groupAvatarPreviewUrl ? '' : group.partnerName.charAt(0).toUpperCase() }}
+            </span>
+            <input type="file" accept="image/*" (change)="onGroupAvatarSelected($event)">
+            <strong>Choose local picture</strong>
+            <small>{{ selectedGroupAvatarFileName || 'JPG, PNG, WEBP, GIF, BMP, HEIC, HEIF, or AVIF' }}</small>
+          </label>
+          <label class="dashboard-field">
+            <span>Group name</span>
+            <input type="text" [formControl]="groupNameControl">
+          </label>
+          <p class="dashboard-error" *ngIf="groupSettingsMessage">{{ groupSettingsMessage }}</p>
+          <div class="group-create-actions">
+            <button type="button" class="dashboard-button secondary" (click)="closeGroupSettingsPopup()">Cancel</button>
+            <button type="button" class="dashboard-button" [disabled]="isSavingGroup" (click)="saveGroupProfile()">
+              {{ isSavingGroup ? 'Saving...' : 'Save changes' }}
+            </button>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'introduction'">
+        <header class="group-popup-header">
+          <div>
+            <h3>Group Introduction</h3>
+            <p>Keep it short and useful for new members.</p>
+          </div>
+        </header>
+        <div class="group-popup-body">
+          <label class="dashboard-field">
+            <span>Introduction</span>
+            <textarea [formControl]="groupIntroductionControl" rows="5"></textarea>
+          </label>
+          <p class="dashboard-error" *ngIf="groupSettingsMessage">{{ groupSettingsMessage }}</p>
+          <div class="group-create-actions">
+            <button type="button" class="dashboard-button secondary" (click)="closeGroupSettingsPopup()">Cancel</button>
+            <button type="button" class="dashboard-button" [disabled]="isSavingGroup" (click)="saveGroupTextSection('introduction')">
+              {{ isSavingGroup ? 'Saving...' : 'Save introduction' }}
+            </button>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'notice'">
+        <header class="group-popup-header">
+          <div>
+            <h3>Group Notice</h3>
+            <p>Pin an important note for everyone.</p>
+          </div>
+        </header>
+        <div class="group-popup-body">
+          <label class="dashboard-field">
+            <span>Notice</span>
+            <textarea [formControl]="groupNoticeControl" rows="5"></textarea>
+          </label>
+          <p class="dashboard-error" *ngIf="groupSettingsMessage">{{ groupSettingsMessage }}</p>
+          <div class="group-create-actions">
+            <button type="button" class="dashboard-button secondary" (click)="closeGroupSettingsPopup()">Cancel</button>
+            <button type="button" class="dashboard-button" [disabled]="isSavingGroup" (click)="saveGroupTextSection('notice')">
+              {{ isSavingGroup ? 'Saving...' : 'Save notice' }}
+            </button>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'permission'">
+        <header class="group-popup-header">
+          <div>
+            <h3>Create-Room Permission</h3>
+            <p>Choose who can create rooms later.</p>
+          </div>
+        </header>
+        <div class="group-popup-body">
+          <label class="dashboard-field">
+            <span>Permission</span>
+            <select [formControl]="groupCreateRoomPermissionControl">
+              <option value="AdminsOnly">Admins only</option>
+              <option value="AdminsAndModerators">Admins and moderators</option>
+              <option value="AllMembers">All members</option>
+            </select>
+          </label>
+          <p class="dashboard-error" *ngIf="groupSettingsMessage">{{ groupSettingsMessage }}</p>
+          <div class="group-create-actions">
+            <button type="button" class="dashboard-button secondary" (click)="closeGroupSettingsPopup()">Cancel</button>
+            <button type="button" class="dashboard-button" (click)="updateCreateRoomPermission()">Save permission</button>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'members'">
+        <header class="group-popup-header">
+          <div>
+            <h3>Group members</h3>
+            <p>{{ group.memberCount }} members</p>
+          </div>
+        </header>
+        <div class="group-popup-body">
+          <button type="button" class="dashboard-button" *ngIf="group.currentUserCanEditGroup" (click)="openAddMembers()">Add member</button>
+          <section class="group-members-management group-members-management--popup">
+            <article class="group-member-row" *ngFor="let member of visibleGroupMembers; trackBy: trackByGroupMemberId">
+              <span class="avatar avatar--purple" [style.background-image]="'url(' + (member.avatarUrl || '') + ')'">
+                {{ member.avatarUrl ? '' : member.displayName.charAt(0).toUpperCase() }}
+              </span>
+              <div>
+                <strong>{{ member.displayName }}</strong>
+                <span>{{ formatGroupRole(member.role) }} - {{ member.status }}</span>
+              </div>
+              <div class="group-member-actions" *ngIf="group.currentUserCanManageMembers && !member.isCurrentUser && member.role !== 'Owner'">
+                <button type="button" (click)="updateGroupMemberRole(member, 'Admin')">Admin</button>
+                <button type="button" (click)="updateGroupMemberRole(member, 'Moderator')">Mod</button>
+                <button type="button" (click)="updateGroupMemberRole(member, 'Member')">Member</button>
+                <button type="button" class="danger" (click)="removeManagedGroupMember(member)">Remove</button>
+              </div>
+            </article>
+          </section>
+        </div>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'join-requests'">
+        <header class="group-popup-header">
+          <div>
+            <h3>Join Requests</h3>
+            <p>No pending requests.</p>
+          </div>
+        </header>
+        <div class="group-popup-body">
+          <div class="dashboard-empty">
+            <strong>No join requests</strong>
+            <p>Requests will appear here when invite approval is connected.</p>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'invite'">
+        <header class="group-popup-header">
+          <div>
+            <h3>Copy Invite Link</h3>
+            <p>Share this with people you want to invite.</p>
+          </div>
+        </header>
+        <div class="group-popup-body">
+          <label class="dashboard-field">
+            <span>Invite link</span>
+            <input type="text" [value]="getGroupInviteLink(group)" readonly>
+          </label>
+          <p class="dashboard-hint" *ngIf="groupSettingsMessage">{{ groupSettingsMessage }}</p>
+          <div class="group-create-actions">
+            <button type="button" class="dashboard-button secondary" (click)="closeGroupSettingsPopup()">Cancel</button>
+            <button type="button" class="dashboard-button" (click)="copyInviteLink()">Copy link</button>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'pin'">
+        <header class="group-popup-header">
+          <div>
+            <h3>{{ group.isPinned ? 'Unpin chat' : 'Pin chat' }}</h3>
+            <p>{{ group.isPinned ? 'Remove this group from the top of your chat list.' : 'Keep this group at the top of your chat list.' }}</p>
+          </div>
+        </header>
+        <div class="group-popup-body">
+          <div class="group-create-actions">
+            <button type="button" class="dashboard-button secondary" (click)="closeGroupSettingsPopup()">Cancel</button>
+            <button type="button" class="dashboard-button" (click)="confirmGroupPreference('pin', !group.isPinned)">
+              {{ group.isPinned ? 'Unpin' : 'Pin' }}
+            </button>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'mute'">
+        <header class="group-popup-header">
+          <div>
+            <h3>{{ group.isMuted ? 'Unmute notifications' : 'Mute notifications' }}</h3>
+            <p>{{ group.isMuted ? 'Start receiving group notifications again.' : 'Stop notifications from this group.' }}</p>
+          </div>
+        </header>
+        <div class="group-popup-body">
+          <div class="group-create-actions">
+            <button type="button" class="dashboard-button secondary" (click)="closeGroupSettingsPopup()">Cancel</button>
+            <button type="button" class="dashboard-button" (click)="confirmGroupPreference('mute', !group.isMuted)">
+              {{ group.isMuted ? 'Unmute' : 'Mute' }}
+            </button>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'clear-history'">
+        <header class="group-popup-header">
+          <div>
+            <h3>Clear Chat History</h3>
+            <p>This only clears messages from your own view.</p>
+          </div>
+        </header>
+        <div class="group-popup-body">
+          <p class="dashboard-error" *ngIf="groupSettingsMessage">{{ groupSettingsMessage }}</p>
+          <div class="group-create-actions">
+            <button type="button" class="dashboard-button secondary" (click)="closeGroupSettingsPopup()">Cancel</button>
+            <button type="button" class="dashboard-button" (click)="clearGroupChatHistory()">Clear history</button>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'report'">
+        <header class="group-popup-header">
+          <div>
+            <h3>Report Group</h3>
+            <p>Send a short note for moderator review.</p>
+          </div>
+        </header>
+        <div class="group-popup-body">
+          <label class="dashboard-field">
+            <span>Report note</span>
+            <textarea [formControl]="groupReportControl" rows="4"></textarea>
+          </label>
+          <p class="dashboard-error" *ngIf="groupSettingsMessage">{{ groupSettingsMessage }}</p>
+          <div class="group-create-actions">
+            <button type="button" class="dashboard-button secondary" (click)="closeGroupSettingsPopup()">Cancel</button>
+            <button type="button" class="dashboard-button" (click)="submitGroupReport()">Submit report</button>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'delete'">
+        <header class="group-popup-header">
+          <div>
+            <h3>{{ group.currentUserCanDeleteGroup ? 'Delete and Exit' : 'Leave Group' }}</h3>
+            <p>{{ group.currentUserCanDeleteGroup ? 'This removes the group for everyone.' : 'You will no longer receive messages or notifications from this group.' }}</p>
+          </div>
+        </header>
+        <div class="group-popup-body">
+          <p class="dashboard-error" *ngIf="groupSettingsMessage">{{ groupSettingsMessage }}</p>
+          <div class="group-create-actions">
+            <button type="button" class="dashboard-button secondary" (click)="closeGroupSettingsPopup()">Cancel</button>
+            <button type="button" class="dashboard-button" (click)="group.currentUserCanDeleteGroup ? deleteGroupConversation() : requestLeaveGroup()">
+              {{ group.currentUserCanDeleteGroup ? 'Delete group' : 'Leave group' }}
+            </button>
+          </div>
+        </div>
+      </ng-container>
+    </article>
+  </app-modal-shell>
+
+  <app-modal-shell *ngIf="isSearchPopupOpen" size="xl" (closed)="closeSearchPopup()">
+    <article class="dialog-card search-popup">
+      <header class="search-popup-header">
+        <div>
+          <h3>Start a new chat</h3>
+        </div>
+      </header>
+
+      <div class="search-popup-body">
+        <div class="search-popup-bar">
+          <label class="dashboard-field">
+            <span>Search people</span>
+            <input
+              type="text"
+              [formControl]="popupSearchControl"
+              placeholder="Type a name"
+              aria-label="Search people">
+          </label>
+        </div>
+
+        <p class="dashboard-hint" *ngIf="isPopupSearchingUsers">Searching members...</p>
+        <p class="dashboard-error" *ngIf="popupSearchErrorMessage">{{ popupSearchErrorMessage }}</p>
+        <div class="popup-result-list" *ngIf="popupSearchResults.length">
+            <button
+              type="button"
+              class="conversation-row conversation-row--search"
+              *ngFor="let user of popupSearchResults; trackBy: trackByPopupUserId"
+              (click)="startConversation(user)">
+            <span
+              class="avatar avatar--purple"
+              [style.background-image]="'url(' + getUserAvatarUrl(user) + ')'">
+              {{ getUserAvatarUrl(user) ? '' : user.displayName.charAt(0).toUpperCase() }}
+            </span>
+            <div class="conversation-copy">
+              <strong>{{ user.displayName }}</strong>
+              <span>{{ user.role }}</span>
+              <span>{{ user.email }}</span>
+            </div>
+          </button>
+        </div>
+      </div>
+    </article>
+  </app-modal-shell>
+
+  <app-modal-shell *ngIf="isGroupComposerOpen" size="lg" (closed)="closeGroupComposer()">
+    <article class="dialog-card search-popup group-create-modal">
+      <header class="search-popup-header">
+        <div>
+          <h3>Create group chat</h3>
+        </div>
+      </header>
+
+      <div class="search-popup-body">
+        <label class="dashboard-field">
+          <span>Group name</span>
+          <input type="text" [formControl]="groupNameControl" placeholder="Project team, event crew...">
+        </label>
+
+        <label class="group-photo-picker">
+          <span class="avatar avatar--group group-photo-preview" [style.background-image]="'url(' + groupAvatarPreviewUrl + ')'">
+            {{ groupAvatarPreviewUrl ? '' : (groupNameControl.value.trim().charAt(0).toUpperCase() || 'G') }}
+          </span>
+          <input type="file" accept="image/*" (change)="onGroupAvatarSelected($event)">
+          <strong>Choose local picture</strong>
+          <small>{{ selectedGroupAvatarFileName || 'Optional group photo' }}</small>
+        </label>
+
+        <label class="dashboard-field">
+          <span>Add members</span>
+          <input type="text" [formControl]="groupSearchControl" placeholder="Search your network">
+        </label>
+
+        <div class="selected-member-list" *ngIf="selectedGroupMembers.length">
+          <button type="button" class="selected-member-chip" *ngFor="let member of selectedGroupMembers; trackBy: trackByPopupUserId" (click)="removeGroupMember(member.id)">
+            {{ member.displayName }} x
+          </button>
+        </div>
+
+        <p class="dashboard-hint" *ngIf="isGroupSearchingUsers">Searching members...</p>
+        <p class="dashboard-error" *ngIf="groupErrorMessage">{{ groupErrorMessage }}</p>
+
+        <div class="popup-result-list" *ngIf="groupSearchResults.length">
+          <button
+            type="button"
+            class="conversation-row conversation-row--search"
+            *ngFor="let user of groupSearchResults; trackBy: trackByPopupUserId"
+            (click)="addGroupMember(user)">
+            <span
+              class="avatar avatar--purple"
+              [style.background-image]="'url(' + getUserAvatarUrl(user) + ')'">
+              {{ getUserAvatarUrl(user) ? '' : user.displayName.charAt(0).toUpperCase() }}
+            </span>
+            <div class="conversation-copy">
+              <strong>{{ user.displayName }}</strong>
+              <span>{{ user.role }}</span>
+              <span>{{ user.email }}</span>
+            </div>
+          </button>
+        </div>
+
+        <div class="group-create-actions">
+          <button type="button" class="dashboard-button secondary" (click)="closeGroupComposer()">Cancel</button>
+          <button type="button" class="dashboard-button" (click)="createGroupConversation()">Create group</button>
+        </div>
+      </div>
+    </article>
+  </app-modal-shell>
+
+  <app-modal-shell *ngIf="isAddMembersOpen" size="lg" (closed)="closeAddMembers()">
+    <article class="dialog-card search-popup group-create-modal">
+      <header class="search-popup-header">
+        <div>
+          <h3>Add members</h3>
+        </div>
+      </header>
+
+      <div class="search-popup-body">
+        <label class="dashboard-field">
+          <span>Search your network</span>
+          <input type="text" [formControl]="addMemberSearchControl" placeholder="Search people">
+        </label>
+
+        <div class="selected-member-list" *ngIf="selectedAddMembers.length">
+          <button type="button" class="selected-member-chip" *ngFor="let member of selectedAddMembers; trackBy: trackByPopupUserId" (click)="removeSettingsMember(member.id)">
+            {{ member.displayName }} x
+          </button>
+        </div>
+
+        <p class="dashboard-hint" *ngIf="isAddMemberSearchingUsers">Searching members...</p>
+        <p class="dashboard-error" *ngIf="groupSettingsMessage">{{ groupSettingsMessage }}</p>
+
+        <div class="popup-result-list" *ngIf="addMemberSearchResults.length">
+          <button
+            type="button"
+            class="conversation-row conversation-row--search"
+            *ngFor="let user of addMemberSearchResults; trackBy: trackByPopupUserId"
+            (click)="addSettingsMember(user)">
+            <span
+              class="avatar avatar--purple"
+              [style.background-image]="'url(' + getUserAvatarUrl(user) + ')'">
+              {{ getUserAvatarUrl(user) ? '' : user.displayName.charAt(0).toUpperCase() }}
+            </span>
+            <div class="conversation-copy">
+              <strong>{{ user.displayName }}</strong>
+              <span>{{ user.role }}</span>
+              <span>{{ user.email }}</span>
+            </div>
+          </button>
+        </div>
+
+        <div class="group-create-actions">
+          <button type="button" class="dashboard-button secondary" (click)="closeAddMembers()">Cancel</button>
+          <button type="button" class="dashboard-button" [disabled]="isAddingGroupMembers" (click)="confirmAddGroupMembers()">
+            {{ isAddingGroupMembers ? 'Adding...' : 'Add members' }}
+          </button>
+        </div>
+      </div>
+    </article>
+  </app-modal-shell>
+
+  <app-modal-shell *ngIf="isLeaveConfirmOpen" size="sm" (closed)="cancelLeaveGroup()">
+    <article class="dialog-card group-confirm-card">
+      <h3>Are you sure you want to leave this group?</h3>
+      <p>You will no longer receive messages or notifications from this group.</p>
+      <div class="group-create-actions">
+        <button type="button" class="dashboard-button secondary" (click)="cancelLeaveGroup()">No</button>
+        <button type="button" class="dashboard-button" (click)="confirmLeaveGroup()">Yes</button>
+      </div>
+    </article>
+  </app-modal-shell>
+</section>

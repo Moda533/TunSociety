@@ -1,0 +1,83 @@
+<section class="social-page requests-page">
+  <div class="network-layout">
+    <main class="network-main">
+      <article class="social-card request-card">
+        <header class="section-head">
+          <div class="section-title">
+            <span class="section-icon">+</span>
+            <h2>Friend Requests</h2>
+            <span class="badge-count">{{ pendingReceivedCount }}</span>
+          </div>
+        </header>
+
+        <div class="request-summary dashboard-stat-grid">
+          <article class="dashboard-stat-card">
+            <strong>{{ pendingReceivedCount }}</strong>
+            <span>Pending received</span>
+          </article>
+          <article class="dashboard-stat-card">
+            <strong>{{ acceptedCount }}</strong>
+            <span>Accepted</span>
+          </article>
+          <article class="dashboard-stat-card">
+            <strong>{{ sentCount }}</strong>
+            <span>Sent by you</span>
+          </article>
+          <article class="dashboard-stat-card">
+            <strong>{{ currentUserDisplayName }}</strong>
+            <span>Signed in as</span>
+          </article>
+        </div>
+
+        <p class="dashboard-hint" *ngIf="isLoading">Loading friend requests...</p>
+        <p class="dashboard-error" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+        <div class="request-list" *ngIf="filteredRequests.length; else noRequests">
+          <article class="request-row" *ngFor="let request of filteredRequests; trackBy: trackByRequestId">
+            <span
+              class="avatar avatar--pink"
+              [style.background-image]="'url(' + getRequestAvatarUrl(request) + ')'">
+              {{ getRequestAvatarUrl(request) ? '' : counterpartName(request).charAt(0).toUpperCase() }}
+            </span>
+
+            <div class="request-copy">
+              <strong>{{ counterpartName(request) }}</strong>
+              <span>{{ requestDirection(request) }} request - {{ request.status }}</span>
+              <p>{{ request.note || 'No note attached.' }}</p>
+            </div>
+
+            <div class="request-actions">
+              <button type="button" class="primary" *ngIf="canRespond(request)" (click)="acceptRequest(request.id)">Accept</button>
+              <button type="button" class="secondary" *ngIf="canRespond(request)" (click)="declineRequest(request.id)">Decline</button>
+              <span class="status-chip" *ngIf="!canRespond(request)">{{ request.status }}</span>
+            </div>
+          </article>
+        </div>
+
+        <ng-template #noRequests>
+          <div class="dashboard-empty">
+            <strong>No requests found.</strong>
+            <p>Use the top search to find members and send new requests.</p>
+          </div>
+        </ng-template>
+      </article>
+
+      <article class="social-card know-card">
+        <header class="section-head section-head--compact">
+          <h2>Request activity</h2>
+        </header>
+
+        <div class="request-summary request-summary--compact">
+          <article class="dashboard-stat-card">
+            <strong>{{ pendingReceivedCount }}</strong>
+            <span>Need your reply</span>
+          </article>
+          <article class="dashboard-stat-card">
+            <strong>{{ acceptedCount }}</strong>
+            <span>Connected</span>
+          </article>
+        </div>
+      </article>
+    </main>
+  </div>
+</section>

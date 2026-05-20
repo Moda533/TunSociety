@@ -8,7 +8,7 @@
   z-index: 1000;
   display: grid;
   place-items: center;
-  padding: 1rem;
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
   background: rgba(15, 23, 42, 0.62);
   backdrop-filter: blur(3px);
   overflow: auto;
@@ -18,7 +18,8 @@
 .modal-shell__frame {
   position: relative;
   width: min(100%, 42rem);
-  max-height: min(92vh, 72rem);
+  max-width: calc(100vw - 1rem);
+  max-height: min(94dvh, 72rem);
   outline: none;
 }
 
@@ -44,23 +45,35 @@
   align-items: flex-start;
   min-height: 0;
   width: 100%;
+  max-height: inherit;
 }
 
 .modal-shell__close {
   position: absolute;
-  top: 0.85rem;
-  right: 0.85rem;
-  z-index: 1;
-  width: 2.6rem;
-  height: 2.6rem;
+  top: 0.65rem;
+  right: 0.65rem;
+  z-index: 10;
+  width: 2.35rem;
+  height: 2.35rem;
   display: inline-grid;
   place-items: center;
   border: 1px solid rgba(203, 213, 225, 0.95);
   border-radius: 999px;
   background: #ffffff;
   color: #0f172a;
-  box-shadow: 0 12px 22px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
   cursor: pointer;
+}
+
+:host-context(html[data-theme='dark']) .modal-shell__backdrop {
+  background: rgba(2, 6, 23, 0.76);
+}
+
+:host-context(html[data-theme='dark']) .modal-shell__close {
+  border-color: var(--ts-border);
+  background: var(--ts-surface-elevated);
+  color: var(--ts-text);
+  box-shadow: var(--ts-shadow-sm);
 }
 
 .modal-shell__close span {
@@ -76,4 +89,27 @@
 .modal-shell__close:focus-visible {
   outline: 2px solid rgba(31, 95, 255, 0.32);
   outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .modal-shell__backdrop {
+    padding: max(0.5rem, env(safe-area-inset-top)) max(0.5rem, env(safe-area-inset-right)) max(0.5rem, env(safe-area-inset-bottom)) max(0.5rem, env(safe-area-inset-left));
+  }
+
+  .modal-shell__frame,
+  .modal-shell__frame--sm,
+  .modal-shell__frame--md,
+  .modal-shell__frame--lg,
+  .modal-shell__frame--xl {
+    width: 100%;
+    max-width: none;
+    max-height: calc(100dvh - 0.5rem);
+  }
+
+  .modal-shell__close {
+    top: 0.45rem;
+    right: 0.45rem;
+    width: 2.25rem;
+    height: 2.25rem;
+  }
 }

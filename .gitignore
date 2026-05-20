@@ -38,6 +38,9 @@ yarn-error.log
 testem.log
 /typings
 __screenshots__/
+ng-serve*.log
+ng-serve*.err.log
+src_redesign_dashboard_only.zip
 
 # System files
 .DS_Store

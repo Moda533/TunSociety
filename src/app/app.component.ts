@@ -1,13 +1,16 @@
-import { Component, HostListener, OnDestroy } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, ViewChild } from '@angular/core';
 import { FormControl } from '@angular/forms';
 import { NavigationEnd, NavigationStart, Router } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, timer } from 'rxjs';
 import { debounceTime, distinctUntilChanged, filter, switchMap } from 'rxjs/operators';
+import { AppThemeService } from './core/services/app-theme.service';
 import { AuthService } from './core/services/auth.service';
 import { HttpFeedbackService } from './core/services/http-feedback.service';
 import { UserAvatarDirectoryService } from './core/services/user-avatar-directory.service';
-import { SearchService } from './core/services/search.service';
-import { SearchSuggestion } from './shared/models/search.model';
+import { EMPTY_NAVBAR_BADGES, NavbarBadgeService } from './features/community/data-access/navbar-badge.service';
+import { SearchService } from './features/community/data-access/search.service';
+import { NavbarBadgeSummary } from './features/community/models/community.model';
+import { SearchSuggestion } from './features/community/models/search.model';
 
 @Component({
   selector: 'app-root',
@@ -16,25 +19,31 @@ import { SearchSuggestion } from './shared/models/search.model';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnDestroy {
-  animateRoute = true;
-  title = 'Social';
+  @ViewChild('globalSearchInput') private globalSearchInput?: ElementRef<HTMLInputElement>;
+
+  title = 'TunSociety';
   readonly feedback$;
   readonly searchControl = new FormControl('', { nonNullable: true });
   isMeMenuOpen = false;
   isSearchMenuOpen = false;
+  isMobileNavOpen = false;
   isSearchLoading = false;
   searchSuggestions: SearchSuggestion[] = [];
+  badgeSummary: NavbarBadgeSummary = EMPTY_NAVBAR_BADGES;
 
+  private readonly badgeRefreshIntervalMs = 15000;
   private readonly subscriptions = new Subscription();
-  private hasHandledInitialNavigation = false;
 
   constructor(
     private readonly authService: AuthService,
     private readonly avatarDirectory: UserAvatarDirectoryService,
     private readonly router: Router,
     private readonly httpFeedback: HttpFeedbackService,
-    private readonly searchService: SearchService
+    private readonly searchService: SearchService,
+    private readonly navbarBadgeService: NavbarBadgeService,
+    private readonly appThemeService: AppThemeService
   ) {
+    this.appThemeService.currentMode;
     this.feedback$ = this.httpFeedback.message$;
 
     if (!this.authService.getCurrentUser() && this.authService.getToken()) {
@@ -49,21 +58,29 @@ export class AppComponent implements OnDestroy {
           this.httpFeedback.clear();
           this.isMeMenuOpen = false;
           this.isSearchMenuOpen = false;
+          this.isMobileNavOpen = false;
         }
 
         if (event instanceof NavigationEnd) {
           this.resetScrollPosition();
-
-          if (!this.hasHandledInitialNavigation) {
-            this.hasHandledInitialNavigation = true;
-            return;
-          }
-
-          this.animateRoute = false;
-          setTimeout(() => {
-            this.animateRoute = true;
-          }, 0);
+          this.refreshNavbarBadges();
         }
+      })
+    );
+
+    this.subscriptions.add(
+      this.navbarBadgeService.badges$.subscribe((badges) => {
+        this.badgeSummary = badges;
+      })
+    );
+
+    this.subscriptions.add(
+      timer(0, this.badgeRefreshIntervalMs).subscribe(() => {
+        if (typeof document !== 'undefined' && document.hidden) {
+          return;
+        }
+
+        this.refreshNavbarBadges();
       })
     );
 
@@ -87,7 +104,11 @@ export class AppComponent implements OnDestroy {
           this.searchSuggestions = [];
           this.isSearchMenuOpen = false;
           this.isSearchLoading = false;
+          this.navbarBadgeService.reset();
+          return;
         }
+
+        this.navbarBadgeService.refresh(user.id);
       })
     );
   }
@@ -107,15 +128,33 @@ export class AppComponent implements OnDestroy {
   isWorkspaceRoute(): boolean {
     return this.router.url.startsWith('/dashboard')
       || this.router.url.startsWith('/admin')
-      || this.router.url.startsWith('/moderation');
+      || this.router.url.startsWith('/moderation')
+      || this.isGuestWorkspaceRoute();
   }
 
-  isModeratorOrAdmin(): boolean {
-    return this.authService.isModeratorOrAdmin();
+  isAdminWorkspaceRoute(): boolean {
+    return this.router.url.startsWith('/admin')
+      || this.router.url.startsWith('/moderation')
+      || this.router.url.startsWith('/dashboard')
+      || this.isGuestWorkspaceRoute();
+  }
+
+  private isGuestWorkspaceRoute(): boolean {
+    const path = this.router.url.split('?')[0].split('#')[0];
+    return path === '/'
+      || path === '/about'
+      || path === '/features'
+      || path === '/policy'
+      || path === '/contact'
+      || path === '/auth';
+  }
+
+  isModerator(): boolean {
+    return this.authService.canAccessModerationWorkspace();
   }
 
   isAdmin(): boolean {
-    return this.authService.isAdmin();
+    return this.authService.canAccessAdminWorkspace();
   }
 
   currentUserName(): string {
@@ -164,6 +203,7 @@ export class AppComponent implements OnDestroy {
   toggleMeMenu(event: MouseEvent): void {
     event.stopPropagation();
     this.isSearchMenuOpen = false;
+    this.isMobileNavOpen = false;
     this.isMeMenuOpen = !this.isMeMenuOpen;
   }
 
@@ -179,13 +219,43 @@ export class AppComponent implements OnDestroy {
     event.stopPropagation();
   }
 
+  toggleSearchMenu(event: MouseEvent): void {
+    event.stopPropagation();
+
+    if (!this.isLoggedIn()) {
+      return;
+    }
+
+    this.isMeMenuOpen = false;
+    this.isMobileNavOpen = false;
+    this.isSearchMenuOpen = !this.isSearchMenuOpen;
+
+    if (this.isSearchMenuOpen && typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => {
+        this.globalSearchInput?.nativeElement.focus();
+      });
+    }
+  }
+
   openSearchMenu(): void {
     if (!this.isLoggedIn()) {
       return;
     }
 
     this.isMeMenuOpen = false;
+    this.isMobileNavOpen = false;
     this.isSearchMenuOpen = true;
+  }
+
+  toggleMobileNav(event: MouseEvent): void {
+    event.stopPropagation();
+    this.isSearchMenuOpen = false;
+    this.isMeMenuOpen = false;
+    this.isMobileNavOpen = !this.isMobileNavOpen;
+  }
+
+  closeMobileNav(): void {
+    this.isMobileNavOpen = false;
   }
 
   submitSearch(): void {
@@ -236,6 +306,8 @@ export class AppComponent implements OnDestroy {
   logout(): void {
     this.isMeMenuOpen = false;
     this.isSearchMenuOpen = false;
+    this.isMobileNavOpen = false;
+    this.navbarBadgeService.reset();
     this.authService.logout();
     this.httpFeedback.clear();
     this.router.navigate(['/auth']);
@@ -250,12 +322,14 @@ export class AppComponent implements OnDestroy {
   handleDocumentClick(): void {
     this.isMeMenuOpen = false;
     this.isSearchMenuOpen = false;
+    this.isMobileNavOpen = false;
   }
 
   @HostListener('document:keydown.escape')
   handleEscapeKey(): void {
     this.isMeMenuOpen = false;
     this.isSearchMenuOpen = false;
+    this.isMobileNavOpen = false;
   }
 
   @HostListener('document:keydown', ['$event'])
@@ -287,6 +361,15 @@ export class AppComponent implements OnDestroy {
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
     });
+  }
+
+  private refreshNavbarBadges(userId = this.authService.getUserId()): void {
+    if (!this.authService.getToken() || !userId) {
+      this.navbarBadgeService.reset();
+      return;
+    }
+
+    this.navbarBadgeService.refresh(userId);
   }
 
   private fetchSuggestions(query: string) {

@@ -13,9 +13,11 @@ export class AdminGuard implements CanActivate {
     }
 
     return this.auth.syncCurrentUser().pipe(
-      map((user) => user?.role === 'Admin'
-        ? true
-        : this.router.createUrlTree(['/dashboard']))
+      map((user) => !user
+        ? this.router.createUrlTree(['/auth'])
+        : this.auth.canAccessAdminWorkspace(user)
+          ? true
+          : this.router.parseUrl(this.auth.getDefaultRoute(user.role)))
     );
   }
 }

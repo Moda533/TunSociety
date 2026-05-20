@@ -1,0 +1,273 @@
+<section class="admin-simple-page">
+  <header class="admin-simple-header">
+    <div>
+      <h1>Moderation</h1>
+      <p>Review flagged or blocked content from a simple queue.</p>
+    </div>
+
+    <div class="admin-simple-actions">
+      <button type="button" class="admin-button secondary" (click)="refresh()" [disabled]="isLoading">
+        <app-admin-icon name="refresh" [size]="16"></app-admin-icon>
+        {{ isLoading ? 'Refreshing...' : 'Refresh' }}
+      </button>
+      <span class="admin-muted" *ngIf="lastRefresh">Synced {{ lastRefresh | date: 'shortTime' }}</span>
+    </div>
+  </header>
+
+  <p *ngIf="errorMessage" class="admin-alert error">{{ errorMessage }}</p>
+  <p *ngIf="actionMessage" class="admin-alert">{{ actionMessage }}</p>
+
+  <div class="admin-inbox-layout">
+    <section class="admin-list-pane admin-card">
+      <form class="admin-filter-row" (ngSubmit)="submitSearch()">
+        <label class="admin-field search">
+          <span>Search queue</span>
+          <input
+            type="search"
+            [formControl]="searchControl"
+            placeholder="User, content, reason">
+        </label>
+
+        <label class="admin-field status">
+          <span>Type</span>
+          <app-admin-select
+            [formControl]="queueFilterControl"
+            [options]="queueFilterOptions"
+            ariaLabel="Filter moderation queue"
+            (valueChange)="refresh()">
+          </app-admin-select>
+        </label>
+
+        <button type="submit" class="admin-button secondary icon-only" aria-label="Search moderation queue" title="Search moderation queue">
+          <app-admin-icon name="search" [size]="16"></app-admin-icon>
+        </button>
+        <button *ngIf="searchQuery" type="button" class="admin-button ghost icon-only" (click)="clearSearch()" aria-label="Clear moderation filters" title="Clear moderation filters">
+          <app-admin-icon name="filter" [size]="16"></app-admin-icon>
+        </button>
+      </form>
+
+      <div class="admin-table-header">
+        <span>User</span>
+        <span>Content</span>
+        <span>Status</span>
+        <span>Risk</span>
+      </div>
+
+      <div class="admin-row-list admin-card-list" *ngIf="filteredFlaggedContent.length; else emptyQueue">
+        <article
+          class="admin-moderation-row admin-card"
+          *ngFor="let item of filteredFlaggedContent; trackBy: trackByReportId"
+          [class.active]="selectedReport?.moderationResultId === item.moderationResultId"
+          [class.admin-card--danger]="item.action === 'Block'"
+          [class.admin-card--warning]="item.action !== 'Block'"
+          tabindex="0"
+          (click)="selectReport(item)"
+          (keydown.enter)="selectReport(item)"
+          (keydown.space)="selectReport(item); $event.preventDefault()">
+          <span>
+            <strong>{{ item.userDisplayName }}</strong>
+            <small>{{ item.userEmail }}</small>
+          </span>
+          <span>
+            <strong>{{ getContentTypeLabel(item.contentType) }}</strong>
+            <small>{{ getContentPreview(item) }}</small>
+          </span>
+          <span>
+            <span class="status-pill" [class.blocked]="item.action === 'Block'">
+              <app-admin-icon [name]="getContentActionIcon(item)" [size]="14"></app-admin-icon>
+              {{ item.action }}
+            </span>
+          </span>
+          <span>
+            <span
+              class="review-pill"
+              [class.pending]="getReviewStatusClass(item) === 'pending'"
+              [class.success]="getReviewStatusClass(item) === 'success'"
+              [class.warning]="getReviewStatusClass(item) === 'warning'"
+              [class.danger]="getReviewStatusClass(item) === 'danger'">
+              <app-admin-icon [name]="getReviewStatusIcon(item)" [size]="14"></app-admin-icon>
+              {{ getReviewStatusLabel(item) }}
+            </span>
+            <small>{{ getRiskLabel(item.score) }} &middot; {{ getRiskPercentage(item.score) }}%</small>
+            <button type="button" class="row-action mobile-row-action" (click)="openReportDetails(item, $event)">
+              <app-admin-icon name="external-link" [size]="14"></app-admin-icon>
+              Open
+            </button>
+          </span>
+        </article>
+      </div>
+
+      <ng-template #emptyQueue>
+        <div class="admin-empty admin-card">
+          <strong>No flagged content found.</strong>
+          <p>Try a broader filter or refresh the queue.</p>
+        </div>
+      </ng-template>
+    </section>
+
+    <aside id="moderation-detail" class="admin-detail-pane admin-card" *ngIf="selectedReport as report; else noSelection">
+      <a class="mobile-detail-close" href="#" aria-label="Close moderation details">
+        <span aria-hidden="true">X</span>
+      </a>
+
+      <div class="detail-title-row">
+        <div>
+          <h2>{{ report.userDisplayName }}</h2>
+          <p>{{ report.userEmail }}</p>
+        </div>
+        <span class="status-pill" [class.blocked]="report.action === 'Block'">
+          <app-admin-icon [name]="getContentActionIcon(report)" [size]="14"></app-admin-icon>
+          {{ report.action }}
+        </span>
+      </div>
+
+      <dl class="detail-list">
+        <div>
+          <dt>Content type</dt>
+          <dd>{{ getContentTypeLabel(report.contentType) }}</dd>
+        </div>
+        <div>
+          <dt>AI classification</dt>
+          <dd>{{ report.flags.length ? report.flags.join(', ') : 'None' }}</dd>
+        </div>
+        <div>
+          <dt>Score</dt>
+          <dd>{{ getRiskPercentage(report.score) }}%</dd>
+        </div>
+        <div>
+          <dt>Created</dt>
+          <dd>{{ report.createdAtUtc | date: 'short' }}</dd>
+        </div>
+        <div *ngIf="report.isEscalated">
+          <dt>Escalation</dt>
+          <dd>{{ report.escalationNote || 'Escalated for review' }}</dd>
+        </div>
+        <div>
+          <dt>Applied review action</dt>
+          <dd>
+            <span
+              class="review-pill"
+              [class.pending]="getReviewStatusClass(report) === 'pending'"
+              [class.success]="getReviewStatusClass(report) === 'success'"
+              [class.warning]="getReviewStatusClass(report) === 'warning'"
+              [class.danger]="getReviewStatusClass(report) === 'danger'">
+              <app-admin-icon [name]="getReviewStatusIcon(report)" [size]="14"></app-admin-icon>
+              {{ getReviewStatusLabel(report) }}
+            </span>
+            <small *ngIf="report.reviewedAtUtc">Reviewed {{ report.reviewedAtUtc | date: 'short' }}</small>
+          </dd>
+        </div>
+      </dl>
+
+      <section class="detail-section">
+        <h3>Content</h3>
+        <p>{{ report.content }}</p>
+      </section>
+
+      <section class="detail-section" *ngIf="report.reason">
+        <h3>Reason</h3>
+        <p>{{ report.reason }}</p>
+      </section>
+
+      <section class="detail-section" *ngIf="report.reviewNote">
+        <h3>Review note</h3>
+        <p>{{ report.reviewNote }}</p>
+      </section>
+
+      <label class="admin-field">
+        <span>Moderator note</span>
+        <textarea [formControl]="noteControl" placeholder="Optional note for this decision"></textarea>
+      </label>
+
+      <p class="action-hint" *ngIf="!hasReviewNote">
+        Add a note before freezing an account or escalating a case.
+      </p>
+
+      <section class="case-action-group content-decision">
+        <div class="case-action-heading">
+          <div>
+            <h3>Content decision</h3>
+            <p>Resolve the visibility case before account enforcement.</p>
+          </div>
+        </div>
+
+        <div class="detail-actions">
+          <button
+            *ngIf="report.action === 'Block'; else dismissFlagAction"
+            type="button"
+            class="admin-button danger"
+            (click)="reviewReport(report, 'Dismiss', 'Removed')"
+            [disabled]="isReviewing">
+            <app-admin-icon name="trash" [size]="18"></app-admin-icon>
+            Remove
+          </button>
+
+          <ng-template #dismissFlagAction>
+            <button
+              type="button"
+              class="admin-button ghost"
+              (click)="reviewReport(report, 'Dismiss', 'Dismissed')"
+              [disabled]="isReviewing">
+              <app-admin-icon name="check" [size]="18"></app-admin-icon>
+              Dismiss
+            </button>
+          </ng-template>
+        </div>
+      </section>
+
+      <section class="case-action-group user-enforcement">
+        <div class="case-action-heading">
+          <div>
+            <h3>User enforcement</h3>
+            <p>Apply account action only after the content decision is clear.</p>
+          </div>
+        </div>
+
+        <div class="detail-actions">
+          <button type="button" class="admin-button secondary" (click)="reviewReport(report, 'Warn', 'Warning issued')" [disabled]="isReviewing">
+            <app-admin-icon name="warning" [size]="18"></app-admin-icon>
+            Warn
+          </button>
+          <button
+            type="button"
+            class="admin-button"
+            [class.danger]="report.action !== 'Block'"
+            [class.secondary-danger]="report.action === 'Block'"
+            (click)="reviewReport(report, 'Freeze', 'Account frozen')"
+            [disabled]="isReviewing || !hasReviewNote">
+            <app-admin-icon name="lock" [size]="18"></app-admin-icon>
+            Freeze
+          </button>
+
+          <details class="case-more-actions">
+            <summary class="admin-button ghost">
+              <app-admin-icon name="more" [size]="18"></app-admin-icon>
+              More actions
+            </summary>
+            <button
+              type="button"
+              class="case-more-action"
+              (click)="reviewReport(report, 'Escalate', 'Escalated')"
+              [disabled]="isReviewing || !hasReviewNote || report.isEscalated">
+              <app-admin-icon name="arrow-up" [size]="16"></app-admin-icon>
+              Escalate
+            </button>
+          </details>
+        </div>
+      </section>
+
+      <button type="button" class="admin-button secondary full" (click)="openUserProfile(report)">
+        <app-admin-icon name="external-link" [size]="17"></app-admin-icon>
+        Open user profile
+      </button>
+    </aside>
+    <a class="mobile-detail-backdrop" href="#" aria-label="Close moderation details"></a>
+
+    <ng-template #noSelection>
+      <aside class="admin-detail-pane admin-card empty">
+        <strong>No item selected.</strong>
+        <p>Select an item from the queue to review it.</p>
+      </aside>
+    </ng-template>
+  </div>
+</section>

@@ -1,0 +1,849 @@
+﻿<section class="social-page feed-page">
+  <div class="social-layout feed-layout">
+    <main class="social-column social-column--center feed-column">
+      <article class="social-card feed-toolbar-card">
+        <div class="composer-head">
+          <button type="button" class="composer-profile-link" (click)="openUserProfile(userId)">
+            <span class="avatar avatar--you" [style.background-image]="'url(' + currentUserAvatarUrl + ')'">
+              {{ currentUserAvatarUrl ? '' : currentUserInitials }}
+            </span>
+            <div class="composer-copy">
+              <strong>{{ currentUserDisplayName }}</strong>
+              <span>{{ currentUserRole }}</span>
+              <small *ngIf="isFrozenUser">Frozen account</small>
+            </div>
+          </button>
+        </div>
+
+        <div class="feed-toolbar">
+          <input
+            type="search"
+            class="feed-search"
+            [formControl]="searchControl"
+            placeholder="Search posts in your feed..."
+            aria-label="Search posts in your feed">
+
+          <button type="button" class="dashboard-button" (click)="openCreateComposer()">New Post</button>
+          <button type="button" class="dashboard-button secondary" *ngIf="canManageEvents" (click)="openCreateEventComposer()">New Event</button>
+        </div>
+      </article>
+
+      <p class="dashboard-hint" *ngIf="isLoading">Loading posts...</p>
+      <p class="dashboard-error" *ngIf="generalErrorMessage">{{ generalErrorMessage }}</p>
+
+      <article class="social-card event-card" *ngFor="let event of filteredEvents; trackBy: trackByEventId">
+        <div class="event-rating-widget" role="group" [attr.aria-label]="'Rate ' + event.title">
+          <span class="event-rating-thumb" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M8.5 10.2 11.8 3c.8.1 1.4.5 1.8 1.1.5.7.6 1.5.3 2.3l-.7 2.1h5.4c.8 0 1.5.3 2 .9.5.6.7 1.4.5 2.2l-1.1 5.5c-.3 1.5-1.6 2.6-3.1 2.6H8.5v-9.5z"></path>
+              <path d="M3.2 10.3h5.3v9.4H3.2z"></path>
+            </svg>
+          </span>
+          <button
+            type="button"
+            class="event-rating-star"
+            *ngFor="let rating of eventRatingOptions"
+            [class.active]="getEventRatingValue(event) >= rating"
+            [class.pending]="ratingSubmittingEventId === event.id"
+            [attr.aria-pressed]="event.myRating === rating"
+            [attr.aria-label]="'Rate ' + event.title + ' ' + rating + ' out of 5'"
+            [attr.title]="'Rate ' + rating + ' out of 5'"
+            (click)="rateEvent(event, rating, $event)">
+            ★
+          </button>
+        </div>
+
+        <div class="event-banner" *ngIf="event.imageUrl; else eventNoImage" (click)="openEventDetails(event)">
+          <img [src]="event.imageUrl" [attr.alt]="event.title">
+          <span class="event-date-badge">{{ event.startsAtUtc | date: 'MMM d' }}</span>
+        </div>
+
+        <ng-template #eventNoImage>
+          <button type="button" class="event-banner event-banner--empty" (click)="openEventDetails(event)">
+            <span class="event-date-badge">{{ event.startsAtUtc | date: 'MMM d' }}</span>
+          </button>
+        </ng-template>
+
+        <div class="event-body">
+          <div class="event-card-topline">
+            <div class="event-kicker">
+              <span>Event</span>
+              <span>{{ event.startsAtUtc | date: 'short' }}</span>
+            </div>
+
+            <div class="event-menu-anchor" *ngIf="canManageEvents">
+              <button
+                type="button"
+                class="ellipsis-button"
+                aria-label="Open event actions"
+                aria-haspopup="menu"
+                [attr.aria-expanded]="openEventMenuId === event.id"
+                [class.active]="openEventMenuId === event.id"
+                (click)="toggleEventMenu(event.id, $event)">
+                ⋯
+              </button>
+
+              <app-post-action-menu
+                *ngIf="openEventMenuId === event.id"
+                [isOwner]="true"
+                [itemLabel]="'event'"
+                (menuAction)="handleEventMenuAction(event, $event)">
+              </app-post-action-menu>
+            </div>
+          </div>
+
+          <button type="button" class="event-title-button" (click)="openEventDetails(event)">
+            <h3>{{ event.title }}</h3>
+          </button>
+
+          <p>{{ event.description }}</p>
+
+          <div class="event-meta">
+            <span>{{ event.location }}</span>
+            <span>{{ event.goingCount }} going</span>
+            <span>{{ event.interestedCount }} interested</span>
+            <span *ngIf="event.averageRating">{{ event.averageRating }} avg rating</span>
+          </div>
+
+          <footer class="event-footer">
+            <div class="event-metrics">
+              <span>{{ event.commentsCount }} comments</span>
+              <span>{{ event.evaluationCount }} ratings</span>
+            </div>
+
+            <div class="post-actions event-social-actions">
+              <button
+                type="button"
+                class="post-action-button post-action-button--like"
+                [class.active]="isEventLiked(event)"
+                [attr.aria-label]="isEventLiked(event) ? 'Unlike event' : 'Like event'"
+                [attr.aria-pressed]="isEventLiked(event)"
+                [attr.title]="isEventLiked(event) ? 'Unlike event' : 'Like event'"
+                (click)="toggleEventLike(event)">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    *ngIf="!isEventLiked(event)"
+                    d="M12 20.2 10.9 19.2C6.3 15.1 3.2 12.3 3.2 8.7 3.2 5.9 5.3 3.8 8.1 3.8c1.6 0 3.1.7 3.9 1.9.8-1.2 2.3-1.9 3.9-1.9 2.8 0 4.9 2.1 4.9 4.9 0 3.6-3.1 6.4-7.7 10.5L12 20.2z"></path>
+                  <path
+                    *ngIf="isEventLiked(event)"
+                    d="M12 20.4 10.7 19.3C5.7 14.8 2.4 11.8 2.4 8.1 2.4 5 4.8 2.8 7.9 2.8c1.9 0 3.4.8 4.1 2 .7-1.2 2.2-2 4.1-2 3.1 0 5.5 2.2 5.5 5.3 0 3.7-3.3 6.7-8.3 11.2L12 20.4z"></path>
+                </svg>
+              </button>
+
+              <button
+                type="button"
+                class="post-action-button"
+                aria-label="Comment on event"
+                title="Comment on event"
+                (click)="openEventDetails(event)">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4.5 5.8h15v9.2a1.8 1.8 0 0 1-1.8 1.8H10l-4.2 3V16.8H4.5a1.8 1.8 0 0 1-1.8-1.8V7.6a1.8 1.8 0 0 1 1.8-1.8z"></path>
+                </svg>
+              </button>
+
+              <button
+                type="button"
+                class="post-action-button"
+                aria-label="Share event"
+                title="Share event"
+                (click)="shareEvent(event)">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M15.5 8.5 8.2 12l7.3 3.5"></path>
+                  <circle cx="6.2" cy="12" r="2.2"></circle>
+                  <circle cx="17.8" cy="6.8" r="2.2"></circle>
+                  <circle cx="17.8" cy="17.2" r="2.2"></circle>
+                </svg>
+              </button>
+
+              <button
+                type="button"
+                class="post-action-button event-post-action--interested"
+                [class.active]="isEventInterested(event)"
+                [attr.aria-pressed]="isEventInterested(event)"
+                aria-label="Interested in event"
+                title="Interested"
+                (click)="setEventParticipation(event, 'Interested')">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 3.8l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16.1l-4.8 2.6.9-5.4-3.9-3.8 5.4-.8L12 3.8z"></path>
+                </svg>
+              </button>
+
+              <button
+                type="button"
+                class="post-action-button event-post-action--going"
+                [class.active]="isEventGoing(event)"
+                [attr.aria-pressed]="isEventGoing(event)"
+                aria-label="Going to event"
+                title="Going"
+                (click)="setEventParticipation(event, 'Going')">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 4.5v3"></path>
+                  <path d="M17 4.5v3"></path>
+                  <path d="M4.8 8h14.4"></path>
+                  <path d="M6.2 6h11.6a1.7 1.7 0 0 1 1.7 1.7v10.1a1.7 1.7 0 0 1-1.7 1.7H6.2a1.7 1.7 0 0 1-1.7-1.7V7.7A1.7 1.7 0 0 1 6.2 6z"></path>
+                  <path d="M8.2 13.4l2.2 2.2 5.1-5.1"></path>
+                </svg>
+              </button>
+            </div>
+          </footer>
+        </div>
+      </article>
+
+      <article class="social-card post-card" *ngFor="let post of filteredPosts; trackBy: trackByPostId">
+        <header class="post-head">
+          <button type="button" class="post-user post-user-link" (click)="openUserProfile(post.userId)">
+            <span class="avatar avatar--pink" [style.background-image]="'url(' + getPostAvatarUrl(post) + ')'">
+              {{ getPostAvatarUrl(post) ? '' : post.authorName.charAt(0) }}
+            </span>
+            <div>
+              <h3>{{ post.authorName }}</h3>
+              <span>{{ post.roleLabel }} &middot; {{ post.createdAtUtc | date: 'short' }}</span>
+            </div>
+          </button>
+
+          <div class="post-head-actions">
+            <span class="visibility-pill">{{ post.visibility }}</span>
+            <button
+              type="button"
+              class="ellipsis-button"
+              aria-label="Open post actions"
+              aria-haspopup="menu"
+              [attr.aria-expanded]="openPostMenuId === post.id"
+              [class.active]="openPostMenuId === post.id"
+              (click)="togglePostMenu(post.id, $event)">
+              ⋯
+            </button>
+
+            <app-post-action-menu
+              *ngIf="openPostMenuId === post.id"
+              [isOwner]="isOwnPost(post)"
+              [canModerate]="canModeratePosts"
+              [authorName]="post.authorName"
+              (menuAction)="handlePostMenuAction(post, $event)">
+            </app-post-action-menu>
+          </div>
+        </header>
+
+        <p
+          class="post-copy post-copy--interactive"
+          role="button"
+          tabindex="0"
+          (click)="openCommentModal(post)"
+          (keydown.enter)="openCommentModal(post)"
+          (keydown.space)="$event.preventDefault(); openCommentModal(post)">
+          {{ post.content }}
+        </p>
+
+        <img
+          *ngIf="post.imageUrl"
+          class="post-image post-image--interactive"
+          [src]="post.imageUrl"
+          [alt]="post.authorName + ' post image'"
+          role="button"
+          tabindex="0"
+          (click)="openCommentModal(post)"
+          (keydown.enter)="openCommentModal(post)">
+
+        <div class="post-media post-media--interactive" *ngIf="!post.imageUrl" (click)="openCommentModal(post)">
+          <span>Image Placeholder</span>
+        </div>
+
+        <footer class="post-footer">
+          <div class="post-metrics">
+            <span>{{ post.reactions.like }} likes</span>
+            <span>{{ getPostCommentCount(post) }} comments</span>
+          </div>
+
+          <div class="post-actions">
+            <button
+              type="button"
+              class="post-action-button post-action-button--like"
+              [class.active]="isPostLiked(post)"
+              [attr.aria-label]="isPostLiked(post) ? 'Unlike post' : 'Like post'"
+              [attr.aria-pressed]="isPostLiked(post)"
+              [attr.title]="isPostLiked(post) ? 'Unlike post' : 'Like post'"
+              (click)="reactToPost(post, 'like')">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  *ngIf="!isPostLiked(post)"
+                  d="M12 20.2 10.9 19.2C6.3 15.1 3.2 12.3 3.2 8.7 3.2 5.9 5.3 3.8 8.1 3.8c1.6 0 3.1.7 3.9 1.9.8-1.2 2.3-1.9 3.9-1.9 2.8 0 4.9 2.1 4.9 4.9 0 3.6-3.1 6.4-7.7 10.5L12 20.2z"></path>
+                <path
+                  *ngIf="isPostLiked(post)"
+                  d="M12 20.4 10.7 19.3C5.7 14.8 2.4 11.8 2.4 8.1 2.4 5 4.8 2.8 7.9 2.8c1.9 0 3.4.8 4.1 2 .7-1.2 2.2-2 4.1-2 3.1 0 5.5 2.2 5.5 5.3 0 3.7-3.3 6.7-8.3 11.2L12 20.4z"></path>
+              </svg>
+            </button>
+
+            <button
+              type="button"
+              class="post-action-button"
+              aria-label="Comment on post"
+              title="Comment on post"
+              (click)="openCommentModal(post)">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4.5 5.8h15v9.2a1.8 1.8 0 0 1-1.8 1.8H10l-4.2 3V16.8H4.5a1.8 1.8 0 0 1-1.8-1.8V7.6a1.8 1.8 0 0 1 1.8-1.8z"></path>
+              </svg>
+            </button>
+
+            <button
+              type="button"
+              class="post-action-button"
+              aria-label="Share post"
+              title="Share post"
+              (click)="sharePost(post)">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M15.5 8.5 8.2 12l7.3 3.5"></path>
+                <circle cx="6.2" cy="12" r="2.2"></circle>
+                <circle cx="17.8" cy="6.8" r="2.2"></circle>
+                <circle cx="17.8" cy="17.2" r="2.2"></circle>
+              </svg>
+            </button>
+          </div>
+        </footer>
+      </article>
+
+      <article class="social-card post-card post-card--peek" *ngIf="!filteredPosts.length && !filteredEvents.length && !isLoading">
+        <div class="empty-state">
+          <strong>No feed items found.</strong>
+          <p>Try a different search or create a new post.</p>
+        </div>
+      </article>
+    </main>
+
+    <aside class="social-column social-column--right">
+      <article class="social-card friends-card">
+        <h2>Suggested Friends</h2>
+
+        <p class="friends-loading" *ngIf="isSuggestedUsersLoading">Loading people from your network...</p>
+
+        <ng-container *ngIf="!isSuggestedUsersLoading && suggestedUsers.length > 0; else suggestedUsersEmpty">
+          <div class="friend-row" *ngFor="let user of suggestedUsers; trackBy: trackBySuggestedUserId">
+            <button type="button" class="friend-profile-link" (click)="openUserProfile(user.id)">
+              <span
+                class="avatar"
+                [ngClass]="isFemaleUser(user) ? 'avatar--pink' : 'avatar--blue'"
+                [style.background-image]="'url(' + getSuggestedUserAvatarUrl(user) + ')'">
+                {{ getSuggestedUserAvatarUrl(user) ? '' : getSuggestedUserInitials(user) }}
+              </span>
+              <span class="friend-details">
+                <strong class="friend-name">{{ user.displayName }}</strong>
+                <span class="friend-role">{{ user.role || 'Member' }}</span>
+              </span>
+            </button>
+            <div class="friend-action">
+              <ng-container *ngIf="getSuggestedFriendRequestActionState(user) as friendActionState">
+                <button
+                  type="button"
+                  class="friend-action-button"
+                  [class.friend-action-button--neutral]="friendActionState.kind !== 'add'"
+                  [disabled]="friendActionState.disabled"
+                  (click)="toggleSuggestedFriendRequest(user)">
+                  {{ friendActionState.label }}
+                </button>
+              </ng-container>
+            </div>
+          </div>
+        </ng-container>
+
+        <ng-template #suggestedUsersEmpty>
+          <p class="friends-empty">No users available right now.</p>
+        </ng-template>
+      </article>
+    </aside>
+  </div>
+
+  <app-modal-shell *ngIf="isComposerOpen" size="lg" (closed)="requestCloseComposer()">
+    <article class="dialog-card composer-modal">
+      <header class="composer-head composer-head--stacked">
+        <div>
+          <h2>{{ composerMode === 'edit' ? 'Edit post' : 'Create post' }}</h2>
+          <p *ngIf="composerMode === 'edit'">Update the text, image, or visibility, then save changes.</p>
+          <p *ngIf="composerMode === 'create'">Share a new update with the community.</p>
+        </div>
+      </header>
+
+      <form class="composer-form" (ngSubmit)="requestSubmitComposer()">
+        <label class="dashboard-field">
+          <span>Content</span>
+          <textarea [formControl]="newPostControl" rows="5" placeholder="What&apos;s on your mind?"></textarea>
+        </label>
+
+        <div class="composer-grid">
+          <label class="dashboard-field">
+            <span>Visibility</span>
+            <select [formControl]="visibilityControl">
+              <option value="Public">Public</option>
+              <option value="OnlyFriends">Only Friends</option>
+              <option value="Private">Private</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="upload-row">
+          <span>Upload image or GIF</span>
+          <label class="upload-picker">
+            <input type="file" accept="image/*,.gif" (change)="onImageFileSelected($event)">
+            <span class="upload-picker-button">Choose file</span>
+            <span class="upload-picker-text">{{ selectedFileName || 'No file selected' }}</span>
+          </label>
+        </div>
+
+        <div class="image-preview" *ngIf="imagePreviewUrl">
+          <img [src]="imagePreviewUrl" alt="Preview">
+          <div class="image-preview-footer">
+            <span>{{ selectedFileName || 'Linked image' }}</span>
+            <button type="button" class="dashboard-button secondary" (click)="clearImage()">Remove image</button>
+          </div>
+        </div>
+
+        <p class="dashboard-error" *ngIf="postErrorMessage">{{ postErrorMessage }}</p>
+
+        <div class="composer-actions-row">
+          <button type="button" class="dashboard-button secondary" (click)="requestCloseComposer()">Cancel</button>
+          <button type="submit" class="dashboard-button" [disabled]="isSubmitting">
+            {{ isSubmitting ? 'Saving...' : composerConfirmLabel }}
+          </button>
+        </div>
+      </form>
+    </article>
+  </app-modal-shell>
+
+  <app-modal-shell *ngIf="isEventComposerOpen" size="lg" (closed)="closeEventComposer()">
+    <article class="dialog-card composer-modal">
+      <header class="composer-head composer-head--stacked">
+        <div>
+          <h2>{{ eventComposerMode === 'edit' ? 'Edit event' : 'Create event' }}</h2>
+          <p>Publish a structured event card into the community feed.</p>
+        </div>
+      </header>
+
+      <form class="composer-form" (ngSubmit)="submitEventComposer()">
+        <label class="dashboard-field">
+          <span>Title</span>
+          <input type="text" [formControl]="eventTitleControl" placeholder="Event title">
+        </label>
+
+        <label class="dashboard-field">
+          <span>Description</span>
+          <textarea [formControl]="eventDescriptionControl" rows="4" placeholder="What will happen?"></textarea>
+        </label>
+
+        <div class="composer-grid composer-grid--two">
+          <label class="dashboard-field">
+            <span>Date and time</span>
+            <input type="datetime-local" [formControl]="eventDateTimeControl">
+          </label>
+
+          <label class="dashboard-field">
+            <span>Location</span>
+            <input type="text" [formControl]="eventLocationControl" placeholder="Room, venue, or link">
+          </label>
+        </div>
+
+        <div class="upload-row">
+          <span>Upload banner image</span>
+          <label class="upload-picker">
+            <input #eventImageInput type="file" accept="image/*,.gif" (change)="onEventImageFileSelected($event)">
+            <span class="upload-picker-button">Choose file</span>
+            <span class="upload-picker-text">{{ eventImageFileName || (eventImagePreviewUrl ? 'Current image kept' : 'No file selected') }}</span>
+          </label>
+        </div>
+
+        <div class="image-preview" *ngIf="eventImagePreviewUrl">
+          <img [src]="eventImagePreviewUrl" alt="Event banner preview">
+          <div class="image-preview-footer">
+            <span>{{ eventImageFileName || 'Current banner image' }}</span>
+            <button type="button" class="dashboard-button secondary" (click)="clearEventImage(eventImageInput)">Remove image</button>
+          </div>
+        </div>
+
+        <p class="dashboard-error" *ngIf="eventErrorMessage">{{ eventErrorMessage }}</p>
+
+        <div class="composer-actions-row">
+          <button type="button" class="dashboard-button secondary" (click)="closeEventComposer()">Cancel</button>
+          <button type="submit" class="dashboard-button" [disabled]="isSubmitting">
+            {{ isSubmitting ? 'Saving...' : (eventComposerMode === 'edit' ? 'Save event' : 'Create event') }}
+          </button>
+        </div>
+      </form>
+    </article>
+  </app-modal-shell>
+
+  <app-modal-shell *ngIf="confirmDialog || noticeDialog" size="sm" [zIndex]="1200" (closed)="closeConfirmOrNoticeDialog()">
+    <div class="dialog-card" *ngIf="confirmDialog as dialog">
+      <h3>{{ dialog.title }}</h3>
+      <p>{{ dialog.message }}</p>
+      <div class="dialog-actions">
+        <button type="button" class="dashboard-button secondary" (click)="cancelConfirmDialog()">Cancel</button>
+        <button type="button" class="dashboard-button" [class.danger]="dialog.tone === 'danger'" (click)="executeConfirmDialog()">
+          {{ dialog.confirmLabel }}
+        </button>
+      </div>
+    </div>
+
+    <div class="dialog-card" *ngIf="noticeDialog as notice">
+      <h3>{{ notice.title }}</h3>
+      <p>{{ notice.message }}</p>
+      <div class="dialog-actions">
+        <button type="button" class="dashboard-button" (click)="closeNoticeDialog()">{{ notice.ackLabel ?? 'OK' }}</button>
+      </div>
+    </div>
+  </app-modal-shell>
+
+  <app-modal-shell *ngIf="reportDialog as dialog" size="md" [zIndex]="1200" (closed)="closeReportDialog()">
+    <article class="dialog-card report-modal">
+      <h3>Report post</h3>
+      <p>
+        Report this post by <strong>{{ dialog.authorName }}</strong>.
+      </p>
+
+      <div class="report-form">
+        <label class="dashboard-field">
+          <span>Reason</span>
+          <select [(ngModel)]="dialog.reason" name="reportReason">
+            <option *ngFor="let reason of reportReasons" [value]="reason">{{ reason }}</option>
+          </select>
+        </label>
+
+        <label class="dashboard-field">
+          <span>Details</span>
+          <textarea
+            rows="4"
+            [(ngModel)]="dialog.details"
+            name="reportDetails"
+            placeholder="Add extra context, if needed."></textarea>
+        </label>
+      </div>
+
+      <div class="dialog-actions">
+        <button type="button" class="dashboard-button secondary" (click)="closeReportDialog()">Cancel</button>
+        <button type="button" class="dashboard-button" (click)="submitReportDialog()">Submit report</button>
+      </div>
+    </article>
+  </app-modal-shell>
+
+  <app-modal-shell *ngIf="eventRatingDialog as dialog" size="sm" [zIndex]="1200" ariaLabel="Event rating feedback" (closed)="closeEventRatingDialog()">
+    <article class="dialog-card event-rating-modal">
+      <header>
+        <span class="share-modal-eyebrow">Event rating</span>
+        <h3>{{ dialog.title }}</h3>
+        <p>You rated this event {{ dialog.rating }} out of 5.</p>
+      </header>
+
+      <form class="event-rating-feedback-form" (ngSubmit)="submitEventRating()">
+        <label class="dashboard-field">
+          <span>Impressions and suggestions (optional)</span>
+          <textarea rows="4" [formControl]="eventRatingFeedbackControl" placeholder="Share what worked well or what could be improved."></textarea>
+        </label>
+
+        <div class="dialog-actions">
+          <button type="button" class="dashboard-button secondary" (click)="closeEventRatingDialog()">Cancel</button>
+          <button type="submit" class="dashboard-button" [disabled]="ratingSubmittingEventId === dialog.eventId">
+            {{ ratingSubmittingEventId === dialog.eventId ? 'Saving...' : 'Save rating' }}
+          </button>
+        </div>
+      </form>
+    </article>
+  </app-modal-shell>
+
+  <app-modal-shell *ngIf="activeSharePost || activeShareEvent" size="md" [zIndex]="1200" [ariaLabel]="shareModalEyebrow" (closed)="closeSharePopup()">
+    <article class="dialog-card share-post-modal">
+      <header class="share-modal-header">
+        <div>
+          <span class="share-modal-eyebrow">{{ shareModalEyebrow }}</span>
+          <h3>Send link to chat</h3>
+          <p>{{ shareModalDescription }}</p>
+        </div>
+      </header>
+
+      <section class="share-post-preview">
+        <strong>{{ sharePreviewTitle }}</strong>
+        <p>{{ sharePreviewSummary }}</p>
+      </section>
+
+      <div class="share-link-box">
+        <span>{{ shareLink }}</span>
+        <button type="button" class="dashboard-button secondary" (click)="copyShareLink()">Copy</button>
+      </div>
+      <p class="share-feedback" *ngIf="shareCopyMessage">{{ shareCopyMessage }}</p>
+
+      <p class="share-loading" *ngIf="isShareTargetsLoading">Loading people and groups...</p>
+      <p class="dashboard-error" *ngIf="shareErrorMessage">{{ shareErrorMessage }}</p>
+
+      <ng-container *ngIf="!isShareTargetsLoading">
+        <section class="share-target-section" *ngIf="sharePersonTargets.length > 0">
+          <h4>People</h4>
+          <article class="share-target-card" *ngFor="let target of sharePersonTargets; trackBy: trackByShareTargetId">
+            <span
+              class="avatar share-target-avatar"
+              [style.background-image]="target.avatarUrl ? 'url(' + target.avatarUrl + ')' : null">
+              {{ target.avatarUrl ? '' : target.fallbackInitial }}
+            </span>
+            <span class="share-target-copy">
+              <strong>{{ target.name }}</strong>
+              <small>{{ target.subtitle }}</small>
+              <em>{{ target.badge }}</em>
+              <span class="share-target-error" *ngIf="target.errorMessage">{{ target.errorMessage }}</span>
+            </span>
+            <button
+              type="button"
+              class="dashboard-button share-send-button"
+              [disabled]="target.isSending || target.isSent"
+              (click)="sendPostShare(target)">
+              {{ target.isSent ? 'Sent' : (target.isSending ? 'Sending...' : 'Send') }}
+            </button>
+          </article>
+        </section>
+
+        <section class="share-target-section" *ngIf="shareGroupTargets.length > 0">
+          <h4>Groups</h4>
+          <article class="share-target-card" *ngFor="let target of shareGroupTargets; trackBy: trackByShareTargetId">
+            <span
+              class="avatar avatar--green share-target-avatar"
+              [style.background-image]="target.avatarUrl ? 'url(' + target.avatarUrl + ')' : null">
+              {{ target.avatarUrl ? '' : target.fallbackInitial }}
+            </span>
+            <span class="share-target-copy">
+              <strong>{{ target.name }}</strong>
+              <small>{{ target.subtitle }}</small>
+              <em>{{ target.badge }}</em>
+              <span class="share-target-error" *ngIf="target.errorMessage">{{ target.errorMessage }}</span>
+            </span>
+            <button
+              type="button"
+              class="dashboard-button share-send-button"
+              [disabled]="target.isSending || target.isSent"
+              (click)="sendPostShare(target)">
+              {{ target.isSent ? 'Sent' : (target.isSending ? 'Sending...' : 'Send') }}
+            </button>
+          </article>
+        </section>
+      </ng-container>
+    </article>
+  </app-modal-shell>
+
+  <app-modal-shell *ngIf="selectedPost as post" size="xl" ariaLabel="Post details" (closed)="closePostModal()">
+    <article class="dialog-card dialog-card--post post-modal-card">
+      <div class="post-modal">
+        <div class="post-modal-header">
+          <h3>{{ post.authorName }}'s Post</h3>
+        </div>
+
+        <div class="post-modal-body">
+          <div class="post-modal-content">
+            <section class="fb-post-top">
+              <button type="button" class="fb-post-author post-author-link" (click)="openUserProfile(post.userId)">
+                <img
+                  class="fb-post-avatar"
+                  [src]="post.authorAvatar"
+                  [attr.alt]="post.authorName">
+
+                <div>
+                  <p class="fb-post-author-name">{{ post.authorName }}</p>
+                  <span class="fb-post-author-time">{{ post.createdAtUtc | date: 'short' }}</span>
+                </div>
+              </button>
+
+              <p class="fb-post-caption">
+                {{ post.caption }}
+              </p>
+
+              <div class="fb-post-stats" aria-label="Post summary">
+                <span>{{ post.reactions.like }} likes</span>
+                <span>{{ getPostCommentCount(post) }} comments</span>
+                <span>{{ post.mentions.length }} mentions</span>
+              </div>
+            </section>
+
+            <div class="fb-post-media-wrap">
+              <ng-container *ngIf="post.imageUrl; else noPostImage">
+                <img
+                  class="post-modal-image"
+                  [src]="post.imageUrl"
+                  [attr.alt]="post.caption || 'Post image'"
+                  role="button"
+                  tabindex="0"
+                  (click)="openPostImageViewer(post)"
+                  (keydown.enter)="openPostImageViewer(post)">
+              </ng-container>
+
+              <ng-template #noPostImage>
+                <div class="comment-list-empty">No image attached to this post.</div>
+              </ng-template>
+            </div>
+
+            <section class="fb-post-mentions">
+              <h4>Mentions</h4>
+
+              <ng-container *ngIf="post.mentions.length > 0; else noMentions">
+                <div class="mention-chip-list">
+                  <span class="mention-chip" *ngFor="let mention of post.mentions">{{ mention }}</span>
+                </div>
+              </ng-container>
+
+              <ng-template #noMentions>
+                <p class="comment-list-empty">No mentions in this post.</p>
+              </ng-template>
+            </section>
+
+            <section class="post-comment-section">
+              <h4>Comments ({{ getPostCommentCount(post) }})</h4>
+
+              <ng-container *ngIf="post.comments.length > 0; else noComments">
+                <div class="comment-list">
+                  <article
+                    class="comment-thread"
+                    *ngFor="let comment of post.comments; trackBy: trackByCommentId"
+                    [attr.id]="'comment-' + comment.id"
+                    [class.comment-highlight]="highlightedCommentId === comment.id">
+                    <div class="comment-item">
+                      <button type="button" class="comment-avatar-button" (click)="openUserProfile(comment.userId)">
+                        <img
+                          class="comment-avatar"
+                          [src]="getCommentAvatarUrl(comment)"
+                          [attr.alt]="comment.authorName">
+                      </button>
+
+                      <div class="comment-stack">
+                        <div class="comment-item-body">
+                          <div class="comment-item-meta">
+                            <button type="button" class="comment-author-name" (click)="openUserProfile(comment.userId)">
+                              {{ comment.authorName }}
+                            </button>
+                            <span class="comment-item-time">{{ comment.createdAtUtc | date: 'short' }}</span>
+                          </div>
+
+                          <p class="comment-item-content">
+                            <ng-container *ngFor="let segment of formatMentionSegments(comment.content); trackBy: trackByTextSegment">
+                              <span [class.comment-mention]="segment.isMention">{{ segment.text }}</span>
+                            </ng-container>
+                          </p>
+                        </div>
+
+                        <div class="comment-actions">
+                          <button type="button" [class.active]="isCommentLiked(comment)" (click)="toggleCommentLike(comment)">
+                            {{ isCommentLiked(comment) ? 'Liked' : 'Like' }}
+                          </button>
+                          <button type="button" (click)="startReply(comment)">Reply</button>
+                          <span *ngIf="comment.repliesCount > 0">{{ comment.repliesCount }} replies</span>
+                        </div>
+
+                        <div class="comment-replies" *ngIf="getCommentReplies(comment).length > 0">
+                          <article
+                            class="comment-item comment-item--reply"
+                            *ngFor="let reply of getCommentReplies(comment); trackBy: trackByCommentId"
+                            [attr.id]="'comment-' + reply.id"
+                            [class.comment-highlight]="highlightedCommentId === reply.id">
+                            <button type="button" class="comment-avatar-button" (click)="openUserProfile(reply.userId)">
+                              <img
+                                class="comment-avatar"
+                                [src]="getCommentAvatarUrl(reply)"
+                                [attr.alt]="reply.authorName">
+                            </button>
+
+                            <div class="comment-stack">
+                              <div class="comment-item-body">
+                                <div class="comment-item-meta">
+                                  <button type="button" class="comment-author-name" (click)="openUserProfile(reply.userId)">
+                                    {{ reply.authorName }}
+                                  </button>
+                                  <span class="comment-item-time">{{ reply.createdAtUtc | date: 'short' }}</span>
+                                </div>
+
+                                <p class="comment-item-content">
+                                  <ng-container *ngFor="let segment of formatMentionSegments(reply.content); trackBy: trackByTextSegment">
+                                    <span [class.comment-mention]="segment.isMention">{{ segment.text }}</span>
+                                  </ng-container>
+                                </p>
+                              </div>
+
+                              <div class="comment-actions">
+                                <button type="button" [class.active]="isCommentLiked(reply)" (click)="toggleCommentLike(reply)">
+                                  {{ isCommentLiked(reply) ? 'Liked' : 'Like' }}
+                                </button>
+                                <button type="button" (click)="startReply(comment)">Reply</button>
+                              </div>
+                            </div>
+                          </article>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+              </ng-container>
+
+              <ng-template #noComments>
+                <p class="comment-list-empty">No comments yet. Be the first to comment.</p>
+              </ng-template>
+            </section>
+          </div>
+
+          <div class="post-modal-comments">
+            <img
+              class="comment-avatar"
+              [src]="currentUserAvatar"
+              alt="You">
+
+            <div class="comment-composer">
+              <div class="reply-context" *ngIf="commentReplyTarget">
+                <span>Replying to {{ replyTargetName }}</span>
+                <button type="button" (click)="cancelReply()">Cancel</button>
+              </div>
+
+              <div class="comment-input-wrap">
+              <input
+                #commentInput
+                class="comment-input-field"
+                type="text"
+                [value]="getCommentDraft(post.id)"
+                (input)="updateCommentDraft(post.id, $event)"
+                (keyup.enter)="requestSubmitComment(post)"
+                [placeholder]="getCommentPlaceholder()"
+                aria-label="Write a comment">
+
+                <div
+                  class="mention-dropdown"
+                  *ngIf="commentMentionDropdownPostId === post.id"
+                  (click)="$event.stopPropagation()">
+                  <button
+                    type="button"
+                    class="mention-option"
+                    *ngFor="let user of commentMentionResults; trackBy: trackByMentionUserId"
+                    (mousedown)="$event.preventDefault()"
+                    (click)="selectMentionUser(post.id, user, commentInput)">
+                    <img
+                      [src]="getLookupAvatarUrl(user)"
+                      [attr.alt]="user.displayName">
+                    <span>{{ user.displayName }}</span>
+                  </button>
+
+                  <span class="mention-empty" *ngIf="commentMentionResults.length === 0">No members found.</span>
+                </div>
+
+                <div class="comment-tools" aria-hidden="true">
+                  <span>@</span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              class="comment-send"
+              type="button"
+              [disabled]="!getCommentDraft(post.id).trim() || commentSubmittingPostId === post.id"
+              (click)="requestSubmitComment(post)">
+              ->
+            </button>
+          </div>
+        </div>
+      </div>
+    </article>
+  </app-modal-shell>
+
+  <app-modal-shell *ngIf="activeImageModalUrl" size="xl" ariaLabel="Image preview" (closed)="closePostImageViewer()">
+    <article class="dialog-card image-viewer-modal">
+      <img class="image-viewer-modal__image" [src]="activeImageModalUrl" [attr.alt]="activeImageModalAlt || 'Post image preview'">
+      <div class="image-viewer-modal__caption" *ngIf="activeImageModalAlt">
+        <strong>{{ activeImageModalAlt }}</strong>
+      </div>
+    </article>
+  </app-modal-shell>
+</section>

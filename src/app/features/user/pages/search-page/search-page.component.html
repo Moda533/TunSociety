@@ -1,0 +1,451 @@
+<section class="search-page">
+  <article class="search-page-shell">
+    <header class="search-page-header">
+      <div class="search-page-header-copy">
+        <p class="search-kicker">Search</p>
+      </div>
+
+      <nav class="search-tabs ts-scroll-row" *ngIf="hasQuery" aria-label="Search categories">
+        <button
+          type="button"
+          class="search-tab"
+          *ngFor="let tab of tabs"
+          [class.active]="activeTab === tab.key"
+          (click)="selectTab(tab.key)">
+          <span>{{ tab.label }}</span>
+          <span class="search-tab-count">{{ tabCount(tab.key) }}</span>
+        </button>
+      </nav>
+    </header>
+
+    <div class="search-divider"></div>
+
+    <ng-container *ngIf="hasQuery; else noQueryState">
+      <section
+        class="search-section"
+        *ngIf="showPeopleSection && (activeTab === 'users' || visibleUsers.length > 0)">
+        <header class="section-head">
+          <div>
+            <h2>People</h2>
+          </div>
+
+          <button
+            type="button"
+            class="search-section-link"
+            *ngIf="shouldShowSeeMore('users')"
+            (click)="selectTab('users')">
+            See more
+          </button>
+        </header>
+
+        <div class="search-user-list" *ngIf="visibleUsers.length; else noPeople">
+          <article class="search-user-card" *ngFor="let user of visibleUsers; trackBy: trackByUserId">
+            <button type="button" class="search-user-main" (click)="openUser(user)">
+              <span
+                class="search-user-avatar"
+                [style.background-image]="'url(' + getUserAvatarUrl(user) + ')'">
+                {{ getUserAvatarUrl(user) ? '' : user.displayName.charAt(0).toUpperCase() }}
+              </span>
+
+              <div class="search-user-copy">
+                <strong>{{ user.displayName }}</strong>
+                <span>{{ user.role }}</span>
+                <small>{{ user.email }} | Joined {{ user.createdAtUtc | date: 'mediumDate' }}</small>
+              </div>
+            </button>
+
+            <div class="search-user-actions">
+              <span
+                class="search-relationship-badge"
+                [class.search-relationship-badge--friends]="getRelationshipState(user).kind === 'friends'"
+                [class.search-relationship-badge--outgoing]="getRelationshipState(user).kind === 'request-sent'"
+                [class.search-relationship-badge--incoming]="getRelationshipState(user).kind === 'request-received'">
+                {{ relationshipLabel(user) }}
+              </span>
+
+              <div class="search-user-action-row">
+                <button
+                  *ngIf="canAddFriend(user)"
+                  type="button"
+                  class="dashboard-button"
+                  [disabled]="isSubmittingFriendAction || isLoadingFriendRequests"
+                  (click)="requestFriend(user)">
+                  Add Friend
+                </button>
+
+                <button
+                  *ngIf="canCancelRequest(user)"
+                  type="button"
+                  class="dashboard-button secondary"
+                  [disabled]="isSubmittingFriendAction || isLoadingFriendRequests"
+                  (click)="cancelFriendRequest(user)">
+                  Cancel Request
+                </button>
+
+                <button
+                  *ngIf="canAcceptRequest(user)"
+                  type="button"
+                  class="dashboard-button"
+                  [disabled]="isSubmittingFriendAction || isLoadingFriendRequests"
+                  (click)="acceptFriendRequest(user)">
+                  Accept
+                </button>
+
+                <button
+                  *ngIf="canDeclineRequest(user)"
+                  type="button"
+                  class="dashboard-button secondary"
+                  [disabled]="isSubmittingFriendAction || isLoadingFriendRequests"
+                  (click)="declineFriendRequest(user)">
+                  Decline
+                </button>
+
+                <button type="button" class="dashboard-button secondary" (click)="openMessage(user)">Message</button>
+                <button type="button" class="dashboard-button ghost" (click)="openUser(user)">View Profile</button>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <ng-template #noPeople>
+          <div class="empty-state">
+            <strong>No people found.</strong>
+            <p>Try another name, username, or email fragment.</p>
+          </div>
+        </ng-template>
+      </section>
+
+      <section
+        class="search-section"
+        *ngIf="showPostSection && (activeTab === 'posts' || visiblePosts.length > 0)">
+        <header class="section-head">
+          <div>
+            <h2>Posts</h2>
+            <p>Matching post text and authors.</p>
+          </div>
+
+          <button
+            type="button"
+            class="search-section-link"
+            *ngIf="shouldShowSeeMore('posts')"
+            (click)="selectTab('posts')">
+            See more
+          </button>
+        </header>
+
+        <div class="search-post-list" *ngIf="visiblePosts.length; else noPosts">
+          <article class="search-post-card" *ngFor="let post of visiblePosts; trackBy: trackByPostId">
+            <div
+              class="search-post-card__content"
+              role="button"
+              tabindex="0"
+              (click)="openPost(post, 'post')"
+              (keydown.enter)="openPost(post, 'post')"
+              (keydown.space)="$event.preventDefault(); openPost(post, 'post')">
+              <div class="search-post-card__header">
+                <span
+                  class="search-post-avatar"
+                  [style.background-image]="'url(' + getPostAvatarUrl(post) + ')'">
+                  {{ getPostAvatarUrl(post) ? '' : post.authorName.charAt(0).toUpperCase() }}
+                </span>
+
+                <div class="search-post-card__header-copy">
+                  <strong>{{ post.authorName }}</strong>
+                  <span>{{ post.roleLabel }} | {{ post.createdAtUtc | date: 'mediumDate' }}</span>
+                </div>
+
+                <span class="search-visibility-pill">{{ post.visibility }}</span>
+              </div>
+
+              <p>{{ post.content }}</p>
+            </div>
+
+            <button
+              type="button"
+              class="search-post-card__media"
+              (click)="openPost(post, 'post')"
+              [attr.aria-label]="post.imageUrl ? post.authorName + ' post image' : 'Open post details'">
+              <img
+                *ngIf="post.imageUrl; else noPostImage"
+                class="search-post-card__media-image"
+                [src]="post.imageUrl"
+                [attr.alt]="post.authorName + ' post image'">
+
+              <ng-template #noPostImage>
+                <div class="search-post-card__empty-media">
+                  <strong>Text post</strong>
+                  <p>No image attached.</p>
+                </div>
+              </ng-template>
+            </button>
+
+            <footer class="search-post-card__footer">
+              <div class="search-post-card__metrics">
+                <span>{{ post.reactions.like }} likes</span>
+                <span>{{ post.comments.length }} comments</span>
+              </div>
+
+              <div class="search-post-card__actions">
+                <button
+                  type="button"
+                  class="search-post-action-button"
+                  [class.active]="post.reactions.myReaction === 'like'"
+                  [disabled]="isSubmittingPostAction || isFrozenUser"
+                  (click)="reactToSearchPost(post, 'like')">
+                  Like
+                </button>
+
+                <button
+                  type="button"
+                  class="search-post-action-button secondary"
+                  (click)="openPost(post, 'post')">
+                  Comment
+                </button>
+              </div>
+            </footer>
+          </article>
+        </div>
+
+        <ng-template #noPosts>
+          <div class="empty-state">
+            <strong>No posts found.</strong>
+            <p>Try another keyword or search from the feed again later.</p>
+          </div>
+        </ng-template>
+      </section>
+
+      <section
+        class="search-section"
+        *ngIf="showPhotoSection && (activeTab === 'photos' || visiblePhotos.length > 0)">
+        <header class="section-head">
+          <div>
+            <h2>Photos</h2>
+            <p>Image posts related to your search.</p>
+          </div>
+
+          <button
+            type="button"
+            class="search-section-link"
+            *ngIf="shouldShowSeeMore('photos')"
+            (click)="selectTab('photos')">
+            See more
+          </button>
+        </header>
+
+        <div class="search-photo-grid" *ngIf="visiblePhotos.length; else noPhotos">
+          <button
+            type="button"
+            class="search-photo-card"
+            *ngFor="let photo of visiblePhotos; trackBy: trackByPostId"
+            (click)="openPost(photo, 'photo')">
+            <img
+              [src]="photo.imageUrl"
+              [attr.alt]="photo.authorName + ' photo post'">
+
+            <div class="search-photo-card__copy">
+              <strong>{{ photo.authorName }}</strong>
+              <span>{{ photo.content }}</span>
+              <small>{{ photo.reactions.like }} likes | {{ photo.comments.length }} comments</small>
+            </div>
+          </button>
+        </div>
+
+        <ng-template #noPhotos>
+          <div class="empty-state">
+            <strong>No photos found.</strong>
+            <p>Try a keyword that appears in an image post or switch to the Posts tab.</p>
+          </div>
+        </ng-template>
+      </section>
+
+      <section
+        class="search-section"
+        *ngIf="showPagesSection && (activeTab === 'pages' || visiblePages.length > 0)">
+        <header class="section-head">
+          <div>
+            <h2>Pages</h2>
+            <p>Page results will appear here when the project has page data.</p>
+          </div>
+
+          <button
+            type="button"
+            class="search-section-link"
+            *ngIf="shouldShowSeeMore('pages')"
+            (click)="selectTab('pages')">
+            See more
+          </button>
+        </header>
+
+        <div class="search-page-list" *ngIf="visiblePages.length; else noPages">
+          <article class="search-page-result-card" *ngFor="let page of visiblePages; trackBy: trackByPageId">
+            <span
+              class="search-page-avatar"
+              [style.background-image]="page.imageUrl ? 'url(' + getPageAvatarUrl(page) + ')' : null">
+              {{ page.imageUrl ? '' : page.name.charAt(0).toUpperCase() }}
+            </span>
+
+            <div class="search-page-copy">
+              <strong>{{ page.name }}</strong>
+              <span>{{ page.category }}</span>
+              <small>{{ page.followersCount }} followers</small>
+            </div>
+
+            <div class="search-page-actions">
+              <span class="search-page-status" *ngIf="page.isVerified">Verified</span>
+              <button type="button" class="dashboard-button secondary" (click)="openPage(page)">View Page</button>
+            </div>
+          </article>
+        </div>
+
+        <ng-template #noPages>
+          <div class="empty-state">
+            <strong>No pages available yet.</strong>
+            <p>There is no page data in this project build, so this section stays ready for future pages.</p>
+          </div>
+        </ng-template>
+      </section>
+
+      <div class="empty-state search-empty-state" *ngIf="!hasAnyResults">
+        <strong>No results found.</strong>
+        <p>Try another keyword, person, hashtag, or a more specific phrase.</p>
+      </div>
+    </ng-container>
+
+    <ng-template #noQueryState>
+      <div class="empty-state search-empty-state">
+        <strong>Use the search bar in the top header.</strong>
+        <p>Search from the main app header to see people, posts, photos, and pages here.</p>
+      </div>
+    </ng-template>
+  </article>
+
+  <app-modal-shell *ngIf="selectedPost as post" size="xl" ariaLabel="Post preview" (closed)="closePostModal()">
+    <article class="search-post-modal">
+      <header class="search-post-modal__header">
+        <div>
+          <p class="search-kicker">{{ selectedPostSource === 'photo' ? 'Photo preview' : 'Post preview' }}</p>
+          <h2>{{ post.authorName }}'s post</h2>
+          <p>{{ post.createdAtUtc | date: 'medium' }} | {{ post.visibility }}</p>
+        </div>
+
+        <button type="button" class="search-post-modal__view-profile" (click)="openUserById(post.userId)">View profile</button>
+      </header>
+
+      <div class="search-post-modal__body">
+        <div class="search-post-modal__media">
+          <img
+            *ngIf="post.imageUrl; else noPostImage"
+            class="search-post-modal__image"
+            [src]="post.imageUrl"
+            [attr.alt]="post.authorName + ' post image'">
+
+          <ng-template #noPostImage>
+            <div class="search-post-modal__empty-media">
+              <strong>No image attached</strong>
+              <p>This post is text-only, so the details and comments stay on the right.</p>
+            </div>
+          </ng-template>
+        </div>
+
+        <div class="search-post-modal__content">
+          <button type="button" class="search-post-modal__author" (click)="openUserById(post.userId)">
+            <span
+              class="search-post-modal__avatar"
+              [style.background-image]="'url(' + getPostAvatarUrl(post) + ')'">
+              {{ getPostAvatarUrl(post) ? '' : post.authorName.charAt(0).toUpperCase() }}
+            </span>
+
+            <div>
+              <strong>{{ post.authorName }}</strong>
+              <span>{{ post.roleLabel }}</span>
+            </div>
+          </button>
+
+          <p class="search-post-modal__caption">{{ post.content }}</p>
+
+          <div class="search-post-modal__stats">
+            <span>{{ post.reactions.like }} likes</span>
+            <span>{{ post.comments.length }} comments</span>
+          </div>
+
+          <div class="search-post-modal__reactions">
+            <button
+              type="button"
+              class="search-reaction-button"
+              [class.active]="post.reactions.myReaction === 'like'"
+              [disabled]="isSubmittingPostAction"
+              (click)="reactToSelectedPost('like')">
+              Like
+            </button>
+            <button
+              type="button"
+              class="search-reaction-button"
+              [class.active]="post.reactions.myReaction === 'insightful'"
+              [disabled]="isSubmittingPostAction"
+              (click)="reactToSelectedPost('insightful')">
+              Insightful
+            </button>
+            <button
+              type="button"
+              class="search-reaction-button"
+              [class.active]="post.reactions.myReaction === 'support'"
+              [disabled]="isSubmittingPostAction"
+              (click)="reactToSelectedPost('support')">
+              Support
+            </button>
+          </div>
+
+          <section class="search-post-modal__comments">
+            <h4>Comments</h4>
+
+            <div class="search-post-modal__comment-list" *ngIf="post.comments.length; else noComments">
+              <article class="search-post-modal__comment" *ngFor="let comment of post.comments">
+                <button type="button" class="search-post-modal__comment-author" (click)="openUserById(comment.userId)">
+                  <span
+                    class="search-post-modal__comment-avatar"
+                    [style.background-image]="'url(' + getCommentAvatarUrl(comment.userId) + ')'">
+                    {{ getCommentAvatarUrl(comment.userId) ? '' : comment.authorName.charAt(0).toUpperCase() }}
+                  </span>
+                </button>
+
+                <div class="search-post-modal__comment-copy">
+                  <div class="search-post-modal__comment-meta">
+                    <strong>{{ comment.authorName }}</strong>
+                    <span>{{ comment.createdAtUtc | date: 'short' }}</span>
+                  </div>
+                  <p>{{ comment.content }}</p>
+                </div>
+              </article>
+            </div>
+
+            <ng-template #noComments>
+              <p class="search-post-modal__empty-comment">No comments yet. Be the first to comment.</p>
+            </ng-template>
+          </section>
+
+          <form class="search-post-modal__composer" (ngSubmit)="submitSelectedPostComment()">
+            <span
+              class="search-post-modal__composer-avatar"
+              [style.background-image]="'url(' + currentUserAvatarUrl + ')'">
+            </span>
+
+            <input
+              type="text"
+              [formControl]="postCommentControl"
+              placeholder="Write a comment..."
+              aria-label="Write a comment">
+
+            <button
+              type="submit"
+              class="dashboard-button"
+              [disabled]="!postCommentControl.value.trim() || isSubmittingPostAction || isFrozenUser">
+              Send
+            </button>
+          </form>
+
+          <p class="dashboard-hint" *ngIf="selectedPostMessage">{{ selectedPostMessage }}</p>
+        </div>
+      </div>
+    </article>
+  </app-modal-shell>
+</section>

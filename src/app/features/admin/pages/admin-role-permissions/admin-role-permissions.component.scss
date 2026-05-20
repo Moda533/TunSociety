@@ -1,0 +1,254 @@
+.role-permissions-page {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.role-permissions-header,
+.permission-panel-header,
+.permission-actions,
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.role-permissions-header {
+  justify-content: space-between;
+  padding: 1rem;
+}
+
+.role-permissions-header h1,
+.permission-panel-header h2,
+.panel-title h2,
+.permission-group h3 {
+  margin: 0;
+  color: #111827;
+}
+
+.role-permissions-header p,
+.permission-panel-header p,
+.permission-option small {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.eyebrow {
+  color: #2563eb;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.role-permissions-layout {
+  display: grid;
+  grid-template-columns: minmax(13rem, 0.28fr) minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.role-list,
+.permission-panel {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.9rem;
+  box-shadow: none;
+}
+
+.panel-title {
+  justify-content: space-between;
+}
+
+.panel-title span {
+  min-width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  font-weight: 800;
+}
+
+.role-option {
+  width: 100%;
+  min-height: 3.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.7rem;
+  padding: 0.7rem 0.8rem;
+  color: #334155;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.role-option span {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.role-option strong {
+  color: #111827;
+}
+
+.role-option small {
+  color: #64748b;
+  font-size: 0.74rem;
+}
+
+.role-option app-admin-icon {
+  transform: rotate(180deg);
+  color: #94a3b8;
+}
+
+.role-option.active {
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.role-option.active strong,
+.role-option.active app-admin-icon {
+  color: #1d4ed8;
+}
+
+.permission-panel-header {
+  justify-content: space-between;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.permission-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.permission-groups {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.permission-group {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.8rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.permission-group h3 {
+  font-size: 0.9rem;
+}
+
+.permission-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.permission-option {
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.65rem;
+  color: #111827;
+  background: #ffffff;
+}
+
+.permission-option input {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: #2563eb;
+  flex: 0 0 auto;
+}
+
+.permission-option span {
+  min-width: 0;
+  display: grid;
+  gap: 0.1rem;
+}
+
+.permission-option strong {
+  overflow-wrap: anywhere;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .role-permissions-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .role-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .role-list .panel-title {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 680px) {
+  .role-permissions-header,
+  .permission-panel-header,
+  .permission-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .role-list,
+  .permission-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+:host-context(html[data-theme='dark']) {
+  .role-permissions-header,
+  .role-list,
+  .permission-panel,
+  .permission-group {
+    border-color: var(--ts-admin-border-strong);
+    background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
+    color: var(--ts-admin-text);
+  }
+
+  .role-permissions-header h1,
+  .permission-panel-header h2,
+  .panel-title h2,
+  .permission-group h3,
+  .role-option strong,
+  .permission-option strong {
+    color: var(--ts-heading);
+  }
+
+  .role-permissions-header p,
+  .permission-panel-header p,
+  .permission-option small,
+  .role-option small {
+    color: var(--ts-admin-text-muted);
+  }
+
+  .role-option,
+  .permission-option {
+    background: #172033;
+    color: var(--ts-admin-text);
+  }
+
+  .role-option.active {
+    border-color: var(--ts-admin-accent);
+    background: var(--ts-admin-accent-soft);
+  }
+
+  .permission-panel-header {
+    border-color: var(--ts-admin-border-strong);
+  }
+}

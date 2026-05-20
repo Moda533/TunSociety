@@ -1,0 +1,498 @@
+<section class="social-page profile-page">
+  <p class="dashboard-hint" *ngIf="isLoading">Loading profile...</p>
+  <p class="dashboard-error" *ngIf="errorMessage">{{ errorMessage }}</p>
+  <p class="dashboard-hint" *ngIf="successMessage">{{ successMessage }}</p>
+
+  <ng-container *ngIf="currentUser as user; else loadingProfile">
+    <article class="profile-hero social-card">
+      <div class="profile-cover">
+        <img
+          *ngIf="profileCoverUrl; else coverFallback"
+          class="profile-cover-image"
+          [src]="profileCoverUrl"
+          [style.object-position]="profileCoverObjectPosition"
+          [attr.alt]="user.displayName + ' cover photo'"
+          role="button"
+          tabindex="0"
+          (click)="openImageViewer(profileCoverUrl, user.displayName + ' cover photo')"
+          (keydown.enter)="openImageViewer(profileCoverUrl, user.displayName + ' cover photo')">
+
+        <ng-template #coverFallback>
+          <div class="profile-cover-fallback"></div>
+        </ng-template>
+
+        <button *ngIf="isOwnProfile" type="button" class="cover-edit-button" (click)="toggleCoverMenu($event)">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4.5 7.5h3l1.5-2h6l1.5 2h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z"></path>
+            <circle cx="12" cy="13" r="3.5"></circle>
+          </svg>
+          <span>Edit cover photo</span>
+        </button>
+
+        <div class="cover-edit-menu" *ngIf="isOwnProfile && isCoverMenuOpen" (click)="$event.stopPropagation()">
+          <button type="button" (click)="openCoverPicker($event)">Choose cover photo</button>
+          <button type="button" (click)="triggerCoverUpload()">Upload photo</button>
+          <button type="button" (click)="openCoverReposition($event)">Reposition</button>
+        </div>
+
+      </div>
+
+      <div class="profile-head">
+        <div class="avatar-wrap">
+          <button
+            type="button"
+            class="profile-avatar profile-avatar-button"
+            [style.background-image]="'url(' + profileAvatarSource + ')'"
+            [attr.aria-label]="user.displayName + ' profile picture'"
+            (click)="openImageViewer(profileAvatarSource, user.displayName + ' profile picture')">
+          </button>
+
+          <button
+            *ngIf="isOwnProfile"
+            type="button"
+            class="avatar-edit-button"
+            (click)="triggerAvatarUpload()"
+            aria-label="Edit profile picture">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4.5 17.4V20h2.6l9.1-9.1-2.6-2.6-9.1 9.1Z"></path>
+              <path d="m15.6 6.3 2.1-2.1 2.1 2.1-2.1 2.1-2.1-2.1Z"></path>
+            </svg>
+          </button>
+        </div>
+
+        <div class="profile-copy">
+          <div class="profile-heading">
+            <div>
+              <h1>{{ user.displayName }}</h1>
+            </div>
+
+            <button *ngIf="isOwnProfile" type="button" class="edit-profile" (click)="openProfileEditor()">Edit profile</button>
+          </div>
+
+          <p class="profile-bio">
+            Badge: {{ user.badgeName || 'Member' }} &middot; Department: {{ user.departmentName || 'Unassigned' }}
+            &middot; {{ user.gender }}
+            <ng-container *ngIf="user.age !== null">&middot; {{ user.age }} years</ng-container>
+            &middot; {{ isOwnProfile ? profilePrivacy + ' profile' : 'View only profile' }}
+          </p>
+        </div>
+      </div>
+
+      <div class="profile-overview-grid">
+        <div class="detail-card">
+          <strong>Name</strong>
+          <span>{{ user.displayName }}</span>
+        </div>
+        <div class="detail-card">
+          <strong>Badge / Title</strong>
+          <span>{{ user.badgeName || 'Member' }}</span>
+        </div>
+        <div class="detail-card">
+          <strong>Department</strong>
+          <span>{{ user.departmentName || 'Unassigned' }}</span>
+        </div>
+        <div class="detail-card">
+          <strong>Joined</strong>
+          <span>{{ user.createdAtUtc | date: 'mediumDate' }}</span>
+        </div>
+        <div class="detail-card">
+          <strong>Status</strong>
+          <span>{{ memberStatus }}</span>
+        </div>
+      </div>
+
+      <nav class="profile-tabs ts-scroll-row" aria-label="Profile shortcuts">
+        <a routerLink="/dashboard/feed">Feed</a>
+        <a routerLink="/dashboard/search" [queryParams]="{ query: user.displayName, scope: 'users' }">Search</a>
+        <button type="button" [class.active]="activeProfileSection === 'photos'" (click)="selectProfileSection('photos', $event)">Photos</button>
+        <a routerLink="/dashboard/requests">Requests</a>
+        <a routerLink="/dashboard/messenger">Messages</a>
+        <div class="profile-more-menu" (click)="$event.stopPropagation()">
+          <button
+            type="button"
+            [class.active]="isProfileMoreMenuOpen"
+            [attr.aria-expanded]="isProfileMoreMenuOpen"
+            aria-haspopup="menu"
+            (click)="toggleProfileMoreMenu($event)">
+            More
+          </button>
+
+          <div class="profile-more-popover" *ngIf="isProfileMoreMenuOpen" role="menu">
+            <button type="button" role="menuitem" (click)="openProfileMoreItem('Groups', $event)">Groups</button>
+            <button type="button" role="menuitem" (click)="openProfileMoreItem('Events', $event)">Events</button>
+            <button type="button" role="menuitem" (click)="openProfileMoreItem('Check-ins', $event)">Check-ins</button>
+            <button type="button" role="menuitem" (click)="openProfileMoreItem('Likes', $event)">Likes</button>
+            <button type="button" role="menuitem" (click)="openProfileMoreItem('Reviews given', $event)">Reviews given</button>
+            <button type="button" role="menuitem" (click)="openProfileMoreItem('Manage sections', $event)">Manage sections</button>
+          </div>
+        </div>
+      </nav>
+    </article>
+
+    <div class="profile-body">
+      <main class="profile-feed" *ngIf="activeProfileSection === 'posts'; else profilePhotosSection">
+        <article class="social-card profile-summary-card">
+          <header class="mini-head">
+            <div>
+              <h2>{{ isOwnProfile ? 'Your posts' : user.displayName + ' posts' }}</h2>
+              <p>{{ isOwnProfile ? 'These are the posts that appear on your profile and in the feed.' : 'These are the posts that are visible from this profile.' }}</p>
+            </div>
+          </header>
+
+          <p class="dashboard-hint" *ngIf="isPostsLoading">Loading your posts...</p>
+          <div class="profile-post-list" *ngIf="!isPostsLoading && userPosts.length; else noPosts">
+            <article class="profile-post-card social-card" *ngFor="let post of userPosts; trackBy: trackByPostId">
+              <header class="post-head">
+                <div class="post-user">
+                  <span
+                    class="avatar avatar--pink"
+                    [style.background-image]="'url(' + getPostAvatarUrl(post) + ')'">
+                    {{ getPostAvatarUrl(post) ? '' : post.authorName.charAt(0) }}
+                  </span>
+                  <div>
+                    <strong
+                      class="profile-post-author-name"
+                      role="button"
+                      tabindex="0"
+                      (click)="openPostModal(post)"
+                      (keydown.enter)="openPostModal(post)"
+                      (keydown.space)="$event.preventDefault(); openPostModal(post)">
+                      {{ post.authorName }}
+                    </strong>
+                    <span>{{ post.createdAtUtc | date: 'mediumDate' }} &middot; {{ post.visibility }}</span>
+                  </div>
+                </div>
+              </header>
+
+              <p
+                class="post-copy"
+                role="button"
+                tabindex="0"
+                (click)="openPostModal(post)"
+                (keydown.enter)="openPostModal(post)"
+                (keydown.space)="$event.preventDefault(); openPostModal(post)">
+                {{ post.content }}
+              </p>
+
+              <img
+                *ngIf="post.imageUrl"
+                class="post-image"
+                [src]="post.imageUrl"
+                [attr.alt]="post.authorName + ' post image'"
+                role="button"
+                tabindex="0"
+                (click)="openPostModal(post)"
+                (keydown.enter)="openPostModal(post)">
+
+              <div class="post-footer">
+                <div class="post-metrics">
+                  <span>{{ post.reactions.like }} likes</span>
+                  <span>{{ post.comments.length }} comments</span>
+                </div>
+
+                <div class="profile-post-actions">
+                  <button
+                    type="button"
+                    class="profile-post-action-button"
+                    [class.active]="isPostLiked(post)"
+                    [disabled]="isSubmittingPostAction || isFrozenUser"
+                    (click)="reactToProfilePost(post, 'like')">
+                    Like
+                  </button>
+
+                  <button
+                    type="button"
+                    class="profile-post-action-button secondary"
+                    (click)="openPostModal(post)">
+                    Comment
+                  </button>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <ng-template #noPosts>
+            <div class="dashboard-empty">
+              <strong>No posts yet.</strong>
+              <p>Publish from the feed and your posts will show here too.</p>
+            </div>
+          </ng-template>
+        </article>
+      </main>
+
+      <ng-template #profilePhotosSection>
+        <main class="profile-feed">
+          <app-profile-photos [userId]="user.id" [isOwnProfile]="isOwnProfile"></app-profile-photos>
+          <app-profile-groups-preview [userId]="user.id"></app-profile-groups-preview>
+        </main>
+      </ng-template>
+    </div>
+  </ng-container>
+
+  <input
+    *ngIf="isOwnProfile"
+    #avatarUploadInput
+    type="file"
+    accept=".bmp,.gif,.jpeg,.jpg,.jpe,.jfif,.png,.webp,.heic,.heif,.avif,image/*"
+    hidden
+    (change)="onProfileAvatarFileSelected($event)">
+  <input
+    *ngIf="isOwnProfile"
+    #coverUploadInput
+    type="file"
+    accept="image/*,.gif"
+    hidden
+    (change)="onProfileCoverFileSelected($event)">
+
+  <app-modal-shell *ngIf="isOwnProfile && isEditorOpen" size="lg" (closed)="closeProfileEditor()">
+    <article class="dialog-card profile-modal">
+      <header class="composer-head composer-head--stacked">
+        <div>
+          <h2>Edit profile</h2>
+          <p>Update your profile identity and account email.</p>
+        </div>
+        <span class="dashboard-chip">{{ memberStatus }}</span>
+      </header>
+
+      <form class="profile-form" [formGroup]="profileForm" (ngSubmit)="saveProfile()">
+        <div class="profile-settings-grid">
+          <section class="profile-settings-panel">
+            <h3>Identity</h3>
+            <label class="dashboard-field">
+              <span>Name</span>
+              <input
+                id="profile-display-name"
+                type="text"
+                formControlName="displayName"
+                placeholder="Enter your display name">
+            </label>
+
+            <label class="dashboard-field">
+              <span>Email</span>
+              <input
+                type="email"
+                formControlName="email"
+                placeholder="Enter your email">
+            </label>
+          </section>
+        </div>
+
+        <div class="profile-form-actions">
+          <button type="button" class="dashboard-button secondary" (click)="closeProfileEditor()">Cancel</button>
+          <button type="submit" class="dashboard-button" [disabled]="isSaving">
+            {{ isSaving ? 'Saving...' : 'Save changes' }}
+          </button>
+        </div>
+      </form>
+    </article>
+  </app-modal-shell>
+
+  <app-modal-shell *ngIf="isOwnProfile && isCoverPickerOpen" size="xl" (closed)="closeCoverPicker()">
+    <article class="dialog-card cover-picker-modal">
+      <header class="composer-head composer-head--stacked">
+        <div>
+          <h2>Choose cover photo</h2>
+          <p>Select one of your previously uploaded cover photos or upload a new one.</p>
+        </div>
+        <button type="button" class="dashboard-button secondary" (click)="triggerCoverUpload()">Upload photo</button>
+      </header>
+
+      <div class="cover-gallery" *ngIf="coverGalleryUrls.length; else noCoverGallery">
+        <button
+          type="button"
+          class="cover-gallery-item"
+          *ngFor="let cover of coverGalleryUrls"
+          [class.active]="cover === profileCoverUrl"
+          [style.background-image]="'url(' + cover + ')'"
+          (click)="selectStoredCover(cover)">
+          <span *ngIf="cover === profileCoverUrl">Selected</span>
+        </button>
+      </div>
+
+      <ng-template #noCoverGallery>
+        <div class="dashboard-empty">
+          <strong>No cover photos yet.</strong>
+          <p>Upload a cover photo first, then it will appear here for reuse.</p>
+        </div>
+      </ng-template>
+    </article>
+  </app-modal-shell>
+
+  <app-modal-shell *ngIf="isOwnProfile && isCoverRepositionOpen" size="lg" (closed)="closeCoverReposition()">
+    <article class="dialog-card cover-reposition-modal">
+      <header class="composer-head composer-head--stacked">
+        <div>
+          <h2>Reposition cover photo</h2>
+          <p>Move the cover photo left, right, up, or down until it fits the frame clearly.</p>
+        </div>
+      </header>
+
+      <div class="cover-reposition-preview">
+        <img
+          *ngIf="profileCoverUrl; else repositionFallback"
+          class="cover-reposition-image"
+          [src]="profileCoverUrl"
+          [style.object-position]="profileCoverObjectPosition"
+          alt="Cover photo preview">
+
+        <ng-template #repositionFallback>
+          <div class="cover-reposition-fallback"></div>
+        </ng-template>
+      </div>
+
+      <div class="cover-reposition-controls">
+        <div class="reposition-pad" aria-label="Adjust cover position">
+          <button type="button" (click)="shiftCoverPosition('y', -5)">Up</button>
+          <div class="reposition-pad-row">
+            <button type="button" (click)="shiftCoverPosition('x', -5)">Left</button>
+            <button type="button" (click)="shiftCoverPosition('x', 5)">Right</button>
+          </div>
+          <button type="button" (click)="shiftCoverPosition('y', 5)">Down</button>
+        </div>
+
+        <label class="dashboard-field">
+          <span>Horizontal position</span>
+          <input #coverXRange type="range" min="0" max="100" [value]="coverPositionX" (input)="onCoverPositionChange('x', coverXRange.value)">
+        </label>
+
+        <label class="dashboard-field">
+          <span>Vertical position</span>
+          <input #coverYRange type="range" min="0" max="100" [value]="coverPositionY" (input)="onCoverPositionChange('y', coverYRange.value)">
+        </label>
+      </div>
+
+    </article>
+  </app-modal-shell>
+
+  <app-modal-shell *ngIf="activeImageModalUrl" size="xl" ariaLabel="Image preview" (closed)="closeImageViewer()">
+    <article class="dialog-card image-viewer-modal">
+      <img class="image-viewer-modal__image" [src]="activeImageModalUrl" [attr.alt]="activeImageModalAlt">
+      <div class="image-viewer-modal__caption">
+        <strong>{{ activeImageModalAlt }}</strong>
+      </div>
+    </article>
+  </app-modal-shell>
+
+  <app-modal-shell *ngIf="selectedPost as post" size="xl" ariaLabel="Post details" (closed)="closePostModal()">
+    <article class="dialog-card profile-post-modal">
+      <header class="profile-post-modal__header">
+        <div>
+          <p class="profile-post-modal__kicker">Post preview</p>
+          <h2>{{ post.authorName }}'s post</h2>
+          <p>{{ post.createdAtUtc | date: 'medium' }} &middot; {{ post.visibility }}</p>
+        </div>
+
+        <button type="button" class="profile-post-modal__view-profile" (click)="openUserProfile(post.userId)">
+          View profile
+        </button>
+      </header>
+
+      <div class="profile-post-modal__body">
+        <div class="profile-post-modal__media">
+          <img
+            *ngIf="post.imageUrl; else profileNoPostImage"
+            class="profile-post-modal__image"
+            [src]="post.imageUrl"
+            [attr.alt]="post.authorName + ' post image'">
+
+          <ng-template #profileNoPostImage>
+            <div class="profile-post-modal__empty-media">
+              <strong>No image attached</strong>
+              <p>This is a text-only post.</p>
+            </div>
+          </ng-template>
+        </div>
+
+        <div class="profile-post-modal__content">
+          <button type="button" class="profile-post-modal__author" (click)="openUserProfile(post.userId)">
+            <span
+              class="profile-post-modal__avatar"
+              [style.background-image]="'url(' + getPostAvatarUrl(post) + ')'">
+              {{ getPostAvatarUrl(post) ? '' : post.authorName.charAt(0).toUpperCase() }}
+            </span>
+
+            <div>
+              <strong>{{ post.authorName }}</strong>
+              <span>{{ post.roleLabel }}</span>
+            </div>
+          </button>
+
+          <p class="profile-post-modal__caption">{{ post.content }}</p>
+
+          <div class="profile-post-modal__stats">
+            <span>{{ post.reactions.like }} likes</span>
+            <span>{{ post.comments.length }} comments</span>
+          </div>
+
+          <div class="profile-post-modal__actions">
+            <button
+              type="button"
+              class="profile-post-modal__reaction-button"
+              [class.active]="post.reactions.myReaction === 'like'"
+              [disabled]="isSubmittingPostAction || isFrozenUser"
+              (click)="reactToProfilePost(post, 'like')">
+              Like
+            </button>
+          </div>
+
+          <section class="profile-post-modal__comments">
+            <h4>Comments</h4>
+
+            <div class="profile-post-modal__comment-list" *ngIf="post.comments.length; else noProfileComments">
+              <article class="profile-post-modal__comment" *ngFor="let comment of post.comments">
+                <button type="button" class="profile-post-modal__comment-author" (click)="openUserProfile(comment.userId)">
+                  <span
+                    class="profile-post-modal__comment-avatar"
+                    [style.background-image]="'url(' + getCommentAvatarUrl(comment.userId) + ')'">
+                    {{ getCommentAvatarUrl(comment.userId) ? '' : comment.authorName.charAt(0).toUpperCase() }}
+                  </span>
+                </button>
+
+                <div class="profile-post-modal__comment-copy">
+                  <div class="profile-post-modal__comment-meta">
+                    <strong>{{ comment.authorName }}</strong>
+                    <span>{{ comment.createdAtUtc | date: 'short' }}</span>
+                  </div>
+                  <p>{{ comment.content }}</p>
+                </div>
+              </article>
+            </div>
+
+            <ng-template #noProfileComments>
+              <p class="profile-post-modal__empty-comment">No comments yet. Be the first to comment.</p>
+            </ng-template>
+          </section>
+
+          <form class="profile-post-modal__composer" (ngSubmit)="submitSelectedPostComment()">
+            <span
+              class="profile-post-modal__composer-avatar"
+              [style.background-image]="'url(' + currentViewerAvatarUrl + ')'">
+            </span>
+
+            <input
+              type="text"
+              [formControl]="postCommentControl"
+              placeholder="Write a comment..."
+              aria-label="Write a comment">
+
+            <button
+              type="submit"
+              class="dashboard-button"
+              [disabled]="!postCommentControl.value.trim() || isSubmittingPostAction || isFrozenUser">
+              Send
+            </button>
+          </form>
+
+          <p class="dashboard-hint" *ngIf="selectedPostMessage">{{ selectedPostMessage }}</p>
+        </div>
+      </div>
+    </article>
+  </app-modal-shell>
+
+  <ng-template #loadingProfile>
+    <div class="dashboard-empty" *ngIf="!isLoading && !errorMessage">
+      <strong>No profile loaded.</strong>
+      <p>Please sign in again if this page does not load.</p>
+    </div>
+  </ng-template>
+</section>

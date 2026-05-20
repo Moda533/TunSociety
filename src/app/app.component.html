@@ -1,8 +1,10 @@
 <div class="app-shell">
-  <header class="app-header">
+  <header class="app-header" *ngIf="!isAdminWorkspaceRoute()">
     <div class="app-header-main">
       <a class="brand" [routerLink]="isLoggedIn() ? '/dashboard/feed' : '/about'" aria-label="Social home">
-        <span class="brand-mark">S</span>
+        <span class="brand-mark">
+          <img src="/assets/logo.png" alt="" aria-hidden="true">
+        </span>
         <span class="brand-name">{{ title }}</span>
       </a>
 
@@ -10,15 +12,14 @@
         *ngIf="isLoggedIn()"
         class="header-search-shell"
         [class.open]="showSearchDropdown"
+        [class.mobile-open]="isSearchMenuOpen"
         (click)="onSearchContainerClick($event)">
         <form class="header-search" aria-label="Search" (ngSubmit)="submitSearch()">
           <button type="submit" class="search-icon-button" aria-label="Open search results">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-              <circle cx="11" cy="11" r="7"></circle>
-              <path d="m20 20-3.5-3.5"></path>
-            </svg>
+            <app-admin-icon name="search" [size]="17"></app-admin-icon>
           </button>
           <input
+            #globalSearchInput
             type="search"
             [formControl]="searchControl"
             (focus)="openSearchMenu()"
@@ -64,19 +65,48 @@
         </div>
       </div>
 
+      <div class="mobile-header-actions">
+        <button
+          *ngIf="isLoggedIn()"
+          type="button"
+          class="mobile-icon-button"
+          aria-label="Open search"
+          [attr.aria-expanded]="isSearchMenuOpen"
+          (click)="toggleSearchMenu($event)">
+          <app-admin-icon name="search" [size]="19"></app-admin-icon>
+        </button>
+
+        <button
+          type="button"
+          class="mobile-icon-button mobile-menu-button"
+          aria-label="Open page menu"
+          [attr.aria-expanded]="isMobileNavOpen"
+          (click)="toggleMobileNav($event)">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+
       <ng-container *ngIf="isLoggedIn(); else guestNav">
         <div class="header-actions">
           <div class="me-menu" [class.open]="isMeMenuOpen" (click)="onMeMenuContainerClick($event)">
-            <button type="button" class="profile-button" (click)="toggleMeMenu($event)" aria-label="Open profile menu">
+            <button
+              type="button"
+              class="profile-button"
+              aria-label="Open profile menu"
+              aria-haspopup="menu"
+              [attr.aria-expanded]="isMeMenuOpen"
+              (click)="toggleMeMenu($event)">
               <span
                 class="profile-button-avatar"
                 [style.background-image]="'url(' + currentUserAvatarUrl() + ')'">
               </span>
             </button>
 
-              <div class="me-popover" *ngIf="isMeMenuOpen">
-              <div class="me-summary">
-                <span class="me-avatar me-avatar-large me-avatar-image" [style.background-image]="'url(' + currentUserAvatarUrl() + ')'"></span>
+            <div class="me-popover contextual-menu" *ngIf="isMeMenuOpen" role="menu" aria-label="Profile menu">
+              <div class="menu-summary">
+                <span class="me-avatar me-avatar-image" [style.background-image]="'url(' + currentUserAvatarUrl() + ')'"></span>
                 <div>
                   <strong>{{ currentUserName() }}</strong>
                   <span>{{ currentUserRole() }}</span>
@@ -84,45 +114,76 @@
                 </div>
               </div>
 
-              <a class="me-primary" routerLink="/dashboard/profile" (click)="closeMeMenu()">View profile</a>
+              <div class="menu-separator"></div>
 
-              <div class="me-section">
-                <span class="me-section-title">Explore</span>
-                <a routerLink="/about" (click)="closeMeMenu()">About</a>
-                <a routerLink="/features" (click)="closeMeMenu()">Features</a>
-                <a routerLink="/policy" (click)="closeMeMenu()">Policy</a>
-                <a routerLink="/contact" (click)="closeMeMenu()">Contact</a>
-              </div>
+              <a class="menu-item" role="menuitem" routerLink="/dashboard/profile" (click)="closeMeMenu()">
+                <span class="menu-item-icon"><app-admin-icon name="user" [size]="16"></app-admin-icon></span>
+                <span>Profile</span>
+              </a>
 
-              <div class="me-section" *ngIf="isModeratorOrAdmin() || isAdmin()">
-                <span class="me-section-title">Management</span>
-                <a *ngIf="isModeratorOrAdmin()" routerLink="/moderation" (click)="closeMeMenu()">Moderation</a>
-                <a *ngIf="isAdmin()" routerLink="/admin" (click)="closeMeMenu()">Admin</a>
-              </div>
+              <a class="menu-item" role="menuitem" routerLink="/about" (click)="closeMeMenu()">
+                <span class="menu-item-icon"><app-admin-icon name="file-text" [size]="16"></app-admin-icon></span>
+                <span>About</span>
+              </a>
 
-              <button type="button" class="me-logout" (click)="logout()">Sign Out</button>
+              <a class="menu-item" role="menuitem" routerLink="/features" (click)="closeMeMenu()">
+                <span class="menu-item-icon"><app-admin-icon name="dashboard" [size]="16"></app-admin-icon></span>
+                <span>Features</span>
+              </a>
+
+              <a class="menu-item" role="menuitem" routerLink="/policy" (click)="closeMeMenu()">
+                <span class="menu-item-icon"><app-admin-icon name="shield" [size]="16"></app-admin-icon></span>
+                <span>Policy</span>
+              </a>
+
+              <a class="menu-item" role="menuitem" routerLink="/contact" (click)="closeMeMenu()">
+                <span class="menu-item-icon"><app-admin-icon name="inbox" [size]="16"></app-admin-icon></span>
+                <span>Contact</span>
+              </a>
+
+              <ng-container *ngIf="isModerator() || isAdmin()">
+                <div class="menu-separator"></div>
+
+                <a class="menu-item" role="menuitem" *ngIf="isModerator()" routerLink="/moderation" (click)="closeMeMenu()">
+                  <span class="menu-item-icon"><app-admin-icon name="shield" [size]="16"></app-admin-icon></span>
+                  <span>Moderation</span>
+                </a>
+
+                <a class="menu-item" role="menuitem" *ngIf="isAdmin()" routerLink="/admin" (click)="closeMeMenu()">
+                  <span class="menu-item-icon"><app-admin-icon name="dashboard" [size]="16"></app-admin-icon></span>
+                  <span>Admin dashboard</span>
+                </a>
+              </ng-container>
+
+              <div class="menu-separator"></div>
+
+              <button type="button" class="menu-item danger" role="menuitem" (click)="logout()">
+                <span class="menu-item-icon"><app-admin-icon name="logout" [size]="16"></app-admin-icon></span>
+                <span>Sign out</span>
+              </button>
             </div>
           </div>
         </div>
       </ng-container>
 
       <ng-template #guestNav>
-        <nav class="nav nav-guest" aria-label="Guest navigation">
-          <a class="nav-link" routerLink="/about" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">About</a>
-          <a class="nav-link" routerLink="/features" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Features</a>
-          <a class="nav-link" routerLink="/policy" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Policy</a>
-          <a class="nav-link" routerLink="/contact" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Contact</a>
-          <a class="nav-link" routerLink="/auth" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Sign In</a>
+        <nav class="nav nav-guest ts-scroll-row" [class.mobile-open]="isMobileNavOpen" aria-label="Guest navigation">
+          <a class="nav-link" routerLink="/about" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMobileNav()">About</a>
+          <a class="nav-link" routerLink="/features" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMobileNav()">Features</a>
+          <a class="nav-link" routerLink="/policy" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMobileNav()">Policy</a>
+          <a class="nav-link" routerLink="/contact" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMobileNav()">Contact</a>
+          <a class="nav-link" routerLink="/auth" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMobileNav()">Sign In</a>
         </nav>
       </ng-template>
     </div>
 
-    <nav *ngIf="isLoggedIn()" class="nav nav-member" aria-label="Member navigation">
+    <nav *ngIf="isLoggedIn()" class="nav nav-member ts-scroll-row" [class.mobile-open]="isMobileNavOpen" aria-label="Member navigation">
       <a
         class="nav-link nav-link-stack member-nav-link"
         routerLink="/dashboard/feed"
         routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: true }">
+        [routerLinkActiveOptions]="{ exact: true }"
+        (click)="closeMobileNav()">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.75v-6h-4.5v6H5a1 1 0 0 1-1-1v-9.5Z"></path>
         </svg>
@@ -133,42 +194,52 @@
         class="nav-link nav-link-stack member-nav-link"
         routerLink="/dashboard/requests"
         routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: true }">
+        [routerLinkActiveOptions]="{ exact: true }"
+        (click)="closeMobileNav()">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M7.5 11a3.5 3.5 0 1 0-3.5-3.5A3.5 3.5 0 0 0 7.5 11Zm9 0A3.5 3.5 0 1 0 13 7.5a3.5 3.5 0 0 0 3.5 3.5ZM3 20a4.5 4.5 0 0 1 9 0v1H3Zm9 1v-1a5.8 5.8 0 0 0-1-3.3A4.5 4.5 0 0 1 21 20v1Z"></path>
         </svg>
         <span>Network</span>
+        <span class="nav-dot" *ngIf="badgeSummary.hasPendingFriendRequests" aria-label="Pending friend requests"></span>
       </a>
 
       <a
         class="nav-link nav-link-stack member-nav-link"
         routerLink="/dashboard/messenger"
         routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: true }">
+        [routerLinkActiveOptions]="{ exact: true }"
+        (click)="closeMobileNav()">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-4.5 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"></path>
         </svg>
         <span>Messages</span>
-        <span class="nav-dot"></span>
+        <span class="nav-dot" *ngIf="badgeSummary.hasUnreadMessages" aria-label="Unread messages"></span>
       </a>
 
       <a
         class="nav-link nav-link-stack member-nav-link"
         routerLink="/dashboard/notifications"
         routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: true }">
+        [routerLinkActiveOptions]="{ exact: true }"
+        (click)="closeMobileNav()">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M12 3.75a4.5 4.5 0 0 0-4.5 4.5v2.16c0 .72-.2 1.42-.57 2.03L5.6 14.7A1.5 1.5 0 0 0 6.87 17h10.26a1.5 1.5 0 0 0 1.27-2.3l-1.33-2.26a3.93 3.93 0 0 1-.57-2.03V8.25A4.5 4.5 0 0 0 12 3.75ZM9 18.5a3 3 0 0 0 6 0H9Z"></path>
         </svg>
         <span>Notifications</span>
-        <span class="nav-badge">5</span>
+        <span
+          class="nav-badge"
+          *ngIf="badgeSummary.unreadNotificationsCount > 0"
+          aria-label="Unread notifications">
+          {{ badgeSummary.unreadNotificationsCount }}
+        </span>
       </a>
 
       <a
         class="nav-link nav-link-stack member-nav-link"
         routerLink="/dashboard/profile"
         routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: true }">
+        [routerLinkActiveOptions]="{ exact: true }"
+        (click)="closeMobileNav()">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M12 12.25a4.5 4.5 0 1 0-4.5-4.5 4.5 4.5 0 0 0 4.5 4.5Zm0 2.25c-4.42 0-8 2.09-8 4.67V21h16v-1.83c0-2.58-3.58-4.67-8-4.67Z"></path>
         </svg>
@@ -184,13 +255,13 @@
     </div>
   </div>
 
-  <main class="app-main">
+  <main class="app-main" [class.workspace-main]="isWorkspaceRoute()">
     <div class="app-main-inner" [class.workspace-main-inner]="isWorkspaceRoute()">
-      <div class="route-stage" [class.route-enter]="animateRoute">
+      <div class="route-stage">
         <router-outlet></router-outlet>
       </div>
     </div>
   </main>
 
-  <button type="button" class="help-fab" aria-label="Help">?</button>
+  <button type="button" class="help-fab" *ngIf="!isAdminWorkspaceRoute()" aria-label="Help">?</button>
 </div>

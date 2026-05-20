@@ -1,0 +1,220 @@
+<section class="admin-simple-page">
+  <header class="admin-simple-header">
+    <div>
+      <h1>Users</h1>
+      <p>Search accounts, check status, and open a profile when more context is needed.</p>
+    </div>
+
+    <div class="admin-simple-actions">
+      <a class="admin-button secondary" routerLink="/admin/event-evaluations" queryParamsHandling="preserve">
+        <app-admin-icon name="star" [size]="16"></app-admin-icon>
+        Event evaluations
+      </a>
+      <button type="button" class="admin-button secondary" (click)="refresh()" [disabled]="isLoading">
+        <app-admin-icon name="refresh" [size]="16"></app-admin-icon>
+        {{ isLoading ? 'Refreshing...' : 'Refresh' }}
+      </button>
+      <span class="admin-muted" *ngIf="lastRefresh">Synced {{ lastRefresh | date: 'shortTime' }}</span>
+    </div>
+  </header>
+
+  <p *ngIf="errorMessage" class="admin-alert error">{{ errorMessage }}</p>
+  <p *ngIf="actionMessage" class="admin-alert">{{ actionMessage }}</p>
+
+  <section class="admin-unassigned-banner admin-card" [class.clear]="unassignedUsers.length === 0">
+    <span>{{ unassignedUsers.length }}</span>
+    <div>
+      <strong>Unassigned Members</strong>
+      <p>{{ unassignedUsers.length ? 'Assign these members to departments from the quick controls below.' : 'All visible members are assigned to departments.' }}</p>
+    </div>
+  </section>
+
+  <div class="admin-inbox-layout">
+    <section class="admin-list-pane admin-card">
+      <form class="admin-filter-row" (ngSubmit)="submitSearch()">
+        <label class="admin-field search">
+          <span>Search users</span>
+          <input
+            type="search"
+            [formControl]="searchControl"
+            placeholder="Name, email, username">
+        </label>
+
+        <label class="admin-field role">
+          <span>Role</span>
+          <app-admin-select
+            [formControl]="roleFilterControl"
+            [options]="roleFilterOptions"
+            ariaLabel="Filter users by role">
+          </app-admin-select>
+        </label>
+
+        <button type="submit" class="admin-button secondary icon-only" aria-label="Search users" title="Search users">
+          <app-admin-icon name="search" [size]="16"></app-admin-icon>
+        </button>
+        <button *ngIf="searchQuery" type="button" class="admin-button ghost icon-only" (click)="clearSearch()" aria-label="Clear user filters" title="Clear user filters">
+          <app-admin-icon name="filter" [size]="16"></app-admin-icon>
+        </button>
+      </form>
+
+      <div class="admin-table-header">
+        <span>Name</span>
+        <span>Email</span>
+        <span>Department</span>
+        <span>Badge</span>
+        <span>Status</span>
+        <span>Role</span>
+        <span></span>
+      </div>
+
+      <div class="admin-row-list admin-card-list" *ngIf="filteredUsers.length; else noUsers">
+        <article
+          class="admin-user-row admin-card"
+          *ngFor="let user of filteredUsers; trackBy: trackByUserId"
+          [class.active]="selectedUser?.id === user.id"
+          [class.admin-card--danger]="user.isFrozen"
+          [class.admin-card--success]="!user.isFrozen"
+          tabindex="0"
+          (click)="selectUser(user)"
+          (keydown.enter)="selectUser(user)"
+          (keydown.space)="selectUser(user); $event.preventDefault()">
+          <span class="user-cell">
+            <span
+              class="admin-avatar"
+              [style.background-image]="'url(' + getUserAvatarUrl(user) + ')'">
+              {{ getUserAvatarUrl(user) ? '' : getUserInitials(user) }}
+            </span>
+            <strong>{{ user.displayName || user.userName }}</strong>
+          </span>
+          <span>{{ user.email }}</span>
+          <span>{{ user.departmentName || 'Unassigned' }}</span>
+          <span>{{ user.badgeName || 'Member' }}</span>
+          <span>
+            <span class="status-pill" [class.frozen]="user.isFrozen">
+              <app-admin-icon [name]="user.isFrozen ? 'lock' : 'check'" [size]="14"></app-admin-icon>
+              {{ user.isFrozen ? 'Frozen' : 'Active' }}
+            </span>
+          </span>
+          <span>{{ user.role }}</span>
+          <button class="row-action mobile-row-action" (click)="openUserDetails(user, $event)">
+            <app-admin-icon name="external-link" [size]="14"></app-admin-icon>
+            Open
+          </button>
+        </article>
+      </div>
+
+      <ng-template #noUsers>
+        <div class="admin-empty admin-card">
+          <strong>No users found.</strong>
+          <p>Try a broader search or switch the role filter to all roles.</p>
+        </div>
+      </ng-template>
+    </section>
+
+    <aside class="admin-detail-pane admin-card" [class.mobile-open]="isDetailPopupOpen" *ngIf="selectedUser as user; else noSelection">
+      <button type="button" class="mobile-detail-close" aria-label="Back to users" (click)="closeUserDetails()">
+        <app-admin-icon name="arrow-left" [size]="18"></app-admin-icon>
+      </button>
+
+      <div class="detail-title-row">
+        <span
+          class="admin-avatar large"
+          [style.background-image]="'url(' + getUserAvatarUrl(user) + ')'">
+          {{ getUserAvatarUrl(user) ? '' : getUserInitials(user) }}
+        </span>
+        <div>
+          <h2>{{ user.displayName || user.userName }}</h2>
+          <p>{{ user.email }}</p>
+        </div>
+      </div>
+
+      <dl class="detail-list">
+        <div>
+          <dt>Status</dt>
+          <dd>
+            <span class="status-pill" [class.frozen]="user.isFrozen">
+              <app-admin-icon [name]="user.isFrozen ? 'lock' : 'check'" [size]="14"></app-admin-icon>
+              {{ user.isFrozen ? 'Frozen' : 'Active' }}
+            </span>
+          </dd>
+        </div>
+        <div>
+          <dt>Badge / Title</dt>
+          <dd>{{ user.badgeName || 'Member' }}</dd>
+        </div>
+        <div>
+          <dt>Department</dt>
+          <dd>{{ user.departmentName || 'Unassigned' }}</dd>
+        </div>
+        <div>
+          <dt>Role</dt>
+          <dd>{{ user.role }}</dd>
+        </div>
+        <div>
+          <dt>Username</dt>
+          <dd>@{{ user.userName }}</dd>
+        </div>
+        <div>
+          <dt>Joined</dt>
+          <dd>{{ user.createdAtUtc | date: 'mediumDate' }}</dd>
+        </div>
+      </dl>
+
+      <label class="admin-field">
+        <span>Change role</span>
+        <app-admin-select
+          [value]="user.role"
+          [disabled]="updatingUserId === user.id"
+          [options]="roleOptions"
+          [ariaLabel]="'Change role for ' + (user.displayName || user.userName)"
+          (valueChange)="updateUserRole(user, $event)">
+        </app-admin-select>
+      </label>
+
+      <div class="assignment-grid">
+        <label class="admin-field">
+          <span>Department</span>
+          <app-admin-select
+            [value]="user.departmentId || ''"
+            [disabled]="updatingUserId === user.id"
+            [options]="departmentOptions"
+            [ariaLabel]="'Assign department for ' + (user.displayName || user.userName)"
+            (valueChange)="updateUserDepartment(user, $event)">
+          </app-admin-select>
+        </label>
+
+        <label class="admin-field">
+          <span>Badge / Title</span>
+          <app-admin-select
+            [value]="user.badgeId"
+            [disabled]="updatingUserId === user.id"
+            [options]="getBadgeOptionsForUser(user)"
+            [ariaLabel]="'Assign badge for ' + (user.displayName || user.userName)"
+            (valueChange)="updateUserBadge(user, $event)">
+          </app-admin-select>
+        </label>
+      </div>
+
+      <div class="detail-actions">
+        <button type="button" class="admin-button" (click)="openProfile(user)">
+          <app-admin-icon name="external-link" [size]="17"></app-admin-icon>
+          Open profile
+        </button>
+      </div>
+    </aside>
+    <button
+      type="button"
+      class="mobile-detail-backdrop"
+      [class.mobile-open]="isDetailPopupOpen"
+      aria-label="Close user details"
+      (click)="closeUserDetails()">
+    </button>
+
+    <ng-template #noSelection>
+      <aside class="admin-detail-pane admin-card empty">
+        <strong>No user selected.</strong>
+        <p>Select a user from the list to open details.</p>
+      </aside>
+    </ng-template>
+  </div>
+</section>

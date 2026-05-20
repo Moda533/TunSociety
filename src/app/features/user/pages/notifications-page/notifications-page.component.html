@@ -1,0 +1,63 @@
+<section class="social-page notifications-page">
+  <article class="social-card notifications-card">
+    <header class="notifications-head">
+      <div>
+        <h1>Notifications</h1>
+        <p class="notifications-summary">{{ unreadCount }} unread, {{ readCount }} read</p>
+
+        <div class="notifications-tabs ts-scroll-row">
+          <button type="button" [class.active]="activeTab === 'all'" (click)="selectTab('all')">All</button>
+          <button type="button" [class.active]="activeTab === 'unread'" (click)="selectTab('unread')">Unread</button>
+          <button type="button" [class.active]="activeTab === 'mentions'" (click)="selectTab('mentions')">Mentions</button>
+        </div>
+      </div>
+
+      <div class="notifications-actions">
+        <button type="button" class="dashboard-button" (click)="markAllRead()" [disabled]="unreadCount === 0">Mark all as read</button>
+      </div>
+    </header>
+
+    <p class="dashboard-hint notifications-status" *ngIf="isLoading">Loading notifications...</p>
+    <p class="dashboard-error notifications-status" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+    <div class="notification-list" *ngIf="visibleNotifications.length; else emptyNotifications">
+      <article
+        class="notification-row"
+        *ngFor="let notification of visibleNotifications; trackBy: trackByNotificationId"
+        [class.notification-row--unread]="!notification.isRead"
+        [class.notification-row--openable]="canOpenNotification(notification)"
+        (click)="openNotification(notification)">
+        <span class="notification-avatar-shell">
+          <span class="notification-avatar">
+            <img
+              *ngIf="actorAvatarUrl(notification) as avatarUrl; else notificationInitials"
+              [src]="avatarUrl"
+              [alt]="(notification.actorDisplayName || notification.title) + ' profile picture'">
+            <ng-template #notificationInitials>
+              {{ actorInitials(notification) }}
+            </ng-template>
+          </span>
+          <span
+            class="notification-type-icon"
+            [ngClass]="notificationIconClass(notification.type)"
+            [attr.aria-label]="notification.type">
+            {{ notificationIconLabel(notification.type) }}
+          </span>
+        </span>
+
+        <div class="notification-copy">
+          <p><strong>{{ notification.title }}</strong></p>
+          <p>{{ notification.detail }}</p>
+          <span>{{ notification.createdAtUtc | date: 'short' }}</span>
+        </div>
+      </article>
+    </div>
+
+    <ng-template #emptyNotifications>
+      <div class="dashboard-empty notifications-empty">
+        <strong>No notifications found.</strong>
+        <p>Try switching tabs or pull down from the top to reload.</p>
+      </div>
+    </ng-template>
+  </article>
+</section>

@@ -1,0 +1,133 @@
+<section class="event-evaluations-page">
+  <header class="evaluation-header admin-card">
+    <div>
+      <span class="eyebrow">Event evaluation</span>
+      <h1>Ratings and feedback</h1>
+      <p>Follow member ratings, find past events without evaluations, and read recent feedback from one admin workspace.</p>
+    </div>
+
+    <div class="evaluation-actions">
+      <a class="admin-button secondary" routerLink="/admin/overview" queryParamsHandling="preserve">
+        <app-admin-icon name="dashboard" [size]="16"></app-admin-icon>
+        Overview
+      </a>
+      <button type="button" class="admin-button" (click)="refresh()" [disabled]="isLoading">
+        <app-admin-icon name="refresh" [size]="16"></app-admin-icon>
+        {{ isLoading ? 'Refreshing...' : 'Refresh' }}
+      </button>
+    </div>
+  </header>
+
+  <p *ngIf="errorMessage" class="admin-alert error">{{ errorMessage }}</p>
+
+  <section class="evaluation-summary-grid" *ngIf="dashboard; else summaryLoading">
+    <article
+      class="evaluation-summary-card admin-card"
+      *ngFor="let card of summaryCards; trackBy: trackByLabel"
+      [class.success]="card.tone === 'success'"
+      [class.warning]="card.tone === 'warning'"
+      [class.info]="card.tone === 'info'">
+      <span>{{ card.label }}</span>
+      <strong>{{ card.value }}</strong>
+      <p>{{ card.description }}</p>
+    </article>
+  </section>
+
+  <ng-template #summaryLoading>
+    <section class="evaluation-summary-grid">
+      <article class="evaluation-summary-card admin-card skeleton" *ngFor="let item of [1, 2, 3, 4]">
+        <span></span>
+        <strong></strong>
+        <p></p>
+      </article>
+    </section>
+  </ng-template>
+
+  <div class="evaluation-layout">
+    <section class="evaluation-events-panel admin-card">
+      <div class="panel-title">
+        <div>
+          <h2>Event scorecards</h2>
+          <p *ngIf="lastRefresh">Synced {{ lastRefresh | date: 'shortTime' }}</p>
+        </div>
+        <span>{{ events.length }}</span>
+      </div>
+
+      <div class="event-score-list" *ngIf="events.length; else noEvents">
+        <article class="event-score-row" *ngFor="let event of events; trackBy: trackByEventId">
+          <div class="event-score-main">
+            <span
+              class="event-status"
+              [class.upcoming]="statusFor(event) === 'upcoming'"
+              [class.empty]="statusFor(event) === 'empty'">
+              {{ statusLabel(event) }}
+            </span>
+            <h3>{{ event.title }}</h3>
+            <p>{{ event.location }} &middot; {{ event.startsAtUtc | date: 'mediumDate' }}</p>
+
+            <div class="event-score-metrics">
+              <span><strong>{{ event.averageRating || 0 }}</strong> avg</span>
+              <span><strong>{{ event.evaluationCount }}</strong> ratings</span>
+              <span><strong>{{ event.feedbackCount }}</strong> feedback</span>
+              <span><strong>{{ event.goingCount }}</strong> going</span>
+            </div>
+          </div>
+
+          <div class="rating-breakdown" *ngIf="event.evaluationCount; else noRatings">
+            <div class="rating-bar" *ngFor="let rating of ratingLevels; trackBy: trackByRating">
+              <span>{{ rating }}</span>
+              <i><b [style.width]="ratingWidth(event, rating)"></b></i>
+              <strong>{{ ratingCount(event, rating) }}</strong>
+            </div>
+          </div>
+
+          <ng-template #noRatings>
+            <div class="empty-rating">
+              <strong>No ratings yet.</strong>
+              <span>Open the event from the feed and invite attendees to evaluate it.</span>
+            </div>
+          </ng-template>
+
+          <button type="button" class="admin-button secondary compact" (click)="openEvent(event)">
+            Open event
+          </button>
+        </article>
+      </div>
+
+      <ng-template #noEvents>
+        <div class="admin-empty compact">
+          <strong>No events found.</strong>
+          <p>Event scorecards appear after events are created.</p>
+        </div>
+      </ng-template>
+    </section>
+
+    <aside class="evaluation-feedback-panel admin-card">
+      <div class="panel-title">
+        <div>
+          <h2>Recent feedback</h2>
+          <p>Latest written responses from members.</p>
+        </div>
+        <span>{{ recentFeedback.length }}</span>
+      </div>
+
+      <div class="feedback-list" *ngIf="recentFeedback.length; else noFeedback">
+        <article class="feedback-row" *ngFor="let feedback of recentFeedback; trackBy: trackByFeedbackId">
+          <div>
+            <strong>{{ feedback.userName }}</strong>
+            <span>{{ feedback.eventTitle }}</span>
+          </div>
+          <p>{{ feedback.feedback }}</p>
+          <small>{{ feedback.rating }}/5 &middot; {{ (feedback.updatedAtUtc || feedback.createdAtUtc) | date: 'short' }}</small>
+        </article>
+      </div>
+
+      <ng-template #noFeedback>
+        <div class="admin-empty compact">
+          <strong>No written feedback yet.</strong>
+          <p>Ratings without comments still count in the event scorecards.</p>
+        </div>
+      </ng-template>
+    </aside>
+  </div>
+</section>

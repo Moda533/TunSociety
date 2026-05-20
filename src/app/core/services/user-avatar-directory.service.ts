@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
-import { Observable, Subscription, catchError, forkJoin, interval, map, of, tap } from 'rxjs';
+import { Observable, Subscription, catchError, forkJoin, map, of, tap, timer } from 'rxjs';
 import { AuthService } from './auth.service';
-import { UserService } from './user.service';
-import { User, UserLookup } from '../../shared/models/user.model';
+import { UserService } from '../../features/user/data-access/user.service';
+import { User, UserLookup } from '../../features/user/models/user.model';
 
 type AvatarSource = Pick<UserLookup, 'id' | 'avatarUrl' | 'gender'> | Pick<User, 'id' | 'avatarUrl' | 'gender'>;
 
@@ -22,7 +22,7 @@ export class UserAvatarDirectoryService {
     private readonly authService: AuthService,
     private readonly userService: UserService
   ) {
-    this.refreshSubscription = interval(this.refreshIntervalMs).subscribe(() => {
+    this.refreshSubscription = timer(0, this.refreshIntervalMs).subscribe(() => {
       if (typeof document !== 'undefined' && document.hidden) {
         return;
       }

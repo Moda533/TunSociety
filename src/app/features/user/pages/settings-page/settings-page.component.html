@@ -1,0 +1,87 @@
+<section class="social-page settings-page">
+  <article class="social-card settings-card">
+    <header class="settings-header">
+      <div>
+        <p class="settings-kicker">Account</p>
+        <h1>Settings</h1>
+        <p>Control your app appearance, profile visibility, and account password.</p>
+      </div>
+    </header>
+
+    <p class="dashboard-hint" *ngIf="successMessage">{{ successMessage }}</p>
+    <p class="dashboard-error" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+    <section class="settings-section appearance-section" aria-labelledby="appearance-title">
+      <div class="settings-section-copy">
+        <span class="settings-section-icon"><app-admin-icon name="settings" [size]="18"></app-admin-icon></span>
+        <div>
+          <h2 id="appearance-title">Mode</h2>
+          <p>Choose the color mode for the entire app.</p>
+        </div>
+      </div>
+
+      <div class="theme-mode-grid" role="radiogroup" aria-label="App color mode">
+        <button
+          type="button"
+          class="theme-mode-button"
+          *ngFor="let option of themeOptions"
+          [class.active]="activeTheme === option.value"
+          [attr.aria-checked]="activeTheme === option.value"
+          role="radio"
+          (click)="selectTheme(option.value)">
+          <span class="theme-mode-icon"><app-admin-icon [name]="option.icon" [size]="19"></app-admin-icon></span>
+          <strong>{{ option.label }}</strong>
+          <small>{{ option.description }}</small>
+        </button>
+      </div>
+    </section>
+
+    <div class="settings-list">
+      <section class="settings-row" aria-labelledby="privacy-title">
+        <div class="settings-row-copy">
+          <span class="settings-row-icon"><app-admin-icon name="shield" [size]="18"></app-admin-icon></span>
+          <div>
+            <h2 id="privacy-title">Privacy</h2>
+            <p>Choose whether your profile is visible publicly or kept private.</p>
+          </div>
+        </div>
+
+        <label class="dashboard-field settings-control">
+          <span>Profile privacy</span>
+          <select
+            [ngModel]="profilePrivacy"
+            (ngModelChange)="updatePrivacy($event)">
+            <option value="Public">Public</option>
+            <option value="Private">Private</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="settings-row settings-row--password" aria-labelledby="password-title">
+        <div class="settings-row-copy">
+          <span class="settings-row-icon"><app-admin-icon name="lock" [size]="18"></app-admin-icon></span>
+          <div>
+            <h2 id="password-title">Password</h2>
+            <p>Change the password you use to sign in to your TunSociety account.</p>
+          </div>
+        </div>
+
+        <form class="password-form" [formGroup]="passwordForm" (ngSubmit)="savePassword()">
+          <label class="dashboard-field">
+            <span>New password</span>
+            <input type="password" formControlName="newPassword" placeholder="Enter a new password">
+          </label>
+
+          <label class="dashboard-field">
+            <span>Confirm password</span>
+            <input type="password" formControlName="confirmPassword" placeholder="Confirm the new password">
+          </label>
+
+          <button type="submit" class="dashboard-button" [disabled]="isSavingPassword">
+            {{ isSavingPassword ? 'Saving...' : 'Save password' }}
+          </button>
+        </form>
+      </section>
+    </div>
+  </article>
+</section>

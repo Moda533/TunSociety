@@ -1,0 +1,289 @@
+<section class="statistics-page">
+  <header class="statistics-header">
+    <div>
+      <p class="eyebrow">Admin dashboard</p>
+      <h1>Statistics Overview</h1>
+      <p>Track platform growth, moderation pressure, account restrictions, and appeal handling in one place.</p>
+    </div>
+
+    <div class="statistics-actions">
+      <div class="range-toggle" role="group" aria-label="Statistics time range">
+        <button
+          type="button"
+          *ngFor="let range of ranges; trackBy: trackByRange"
+          [class.active]="selectedRange === range.value"
+          (click)="selectRange(range.value)">
+          {{ range.label }}
+        </button>
+      </div>
+
+      <button type="button" class="refresh-button" (click)="refresh()" [disabled]="isLoading">
+        {{ isLoading ? 'Loading...' : 'Refresh' }}
+      </button>
+    </div>
+  </header>
+
+  <p *ngIf="errorMessage" class="admin-alert error">{{ errorMessage }}</p>
+
+  <section class="summary-grid" *ngIf="overview; else summaryLoading">
+    <article
+      class="summary-card admin-card"
+      *ngFor="let card of summaryCards; trackBy: trackByLabel"
+      [class.success]="card.tone === 'success'"
+      [class.warning]="card.tone === 'warning'"
+      [class.danger]="card.tone === 'danger'"
+      [class.info]="card.tone === 'info'"
+      [class.admin-card--success]="card.tone === 'success'"
+      [class.admin-card--warning]="card.tone === 'warning'"
+      [class.admin-card--danger]="card.tone === 'danger'">
+      <span class="summary-card__icon">{{ card.icon }}</span>
+      <span class="summary-card__copy">
+        <span>{{ card.label }}</span>
+        <strong>{{ formatNumber(card.value) }}</strong>
+        <p>{{ card.description }}</p>
+      </span>
+    </article>
+  </section>
+
+  <ng-template #summaryLoading>
+    <section class="summary-grid">
+      <article class="summary-card admin-card skeleton" *ngFor="let item of [1, 2, 3, 4, 5, 6]">
+        <span></span>
+        <strong></strong>
+        <p></p>
+      </article>
+    </section>
+  </ng-template>
+
+  <section class="focus-grid" *ngIf="overview">
+    <a
+      class="focus-card admin-card"
+      *ngFor="let card of focusCards; trackBy: trackByLabel"
+      [routerLink]="card.route"
+      [class.warning]="card.tone === 'warning'"
+      [class.danger]="card.tone === 'danger'"
+      [class.success]="card.tone === 'success'">
+      <span>{{ card.label }}</span>
+      <strong>{{ formatNumber(card.value) }}</strong>
+      <p>{{ card.description }}</p>
+    </a>
+  </section>
+
+  <section class="chart-grid">
+    <article #chartPanel class="chart-panel chart-panel--line admin-card">
+      <div class="chart-header">
+        <div>
+          <h2>Curve trend</h2>
+          <p>Growth and appeal movement over {{ selectedRangeLabel.toLowerCase() }}</p>
+        </div>
+        <span *ngIf="lastUpdated">Updated {{ lastUpdated | date: 'shortTime' }}</span>
+      </div>
+
+      <div class="chart-state" *ngIf="isLoading && !overview">
+        <strong>Loading statistics...</strong>
+        <p>Fetching the latest admin overview from the backend.</p>
+      </div>
+
+      <div class="chart-state" *ngIf="!isLoading && overview && !hasTrendData">
+        <strong>No activity in this range.</strong>
+        <p>Choose a wider time range or refresh after new activity is recorded.</p>
+      </div>
+
+      <div class="chart-wrap" *ngIf="overview && hasTrendData">
+        <svg
+          class="trend-chart"
+          role="img"
+          aria-label="User and appeal trend line chart"
+          [attr.viewBox]="'0 0 ' + chartWidth + ' ' + chartHeight">
+          <g class="grid-lines">
+            <line
+              *ngFor="let tick of lineYAxisTicks"
+              [attr.x1]="chartPadding.left"
+              [attr.x2]="chartWidth - chartPadding.right"
+              [attr.y1]="yForValue(tick)"
+              [attr.y2]="yForValue(tick)">
+            </line>
+          </g>
+
+          <g class="axis-labels y-labels">
+            <text
+              *ngFor="let tick of lineYAxisTicks"
+              [attr.x]="chartPadding.left - 10"
+              [attr.y]="yForValue(tick) + 4">
+              {{ tick }}
+            </text>
+          </g>
+
+          <g class="series-areas">
+            <path
+              *ngFor="let series of lineChartSeries; trackBy: trackByMetric"
+              [attr.d]="series.areaPath"
+              [attr.fill]="series.color">
+            </path>
+          </g>
+
+          <g class="series-lines">
+            <path
+              *ngFor="let series of lineChartSeries; trackBy: trackByMetric"
+              [attr.d]="series.path"
+              [attr.stroke]="series.color">
+            </path>
+          </g>
+
+          <g class="axis-labels x-labels">
+            <text
+              *ngFor="let label of lineXAxisLabels; trackBy: trackByLabel"
+              [attr.x]="label.x"
+              [attr.y]="chartHeight - 9">
+              {{ label.label }}
+            </text>
+          </g>
+        </svg>
+
+        <div class="chart-legend">
+          <span *ngFor="let series of lineChartSeries; trackBy: trackByMetric">
+            <i [style.background]="series.color"></i>
+            {{ series.label }}
+            <strong>{{ formatNumber(series.total) }}</strong>
+          </span>
+        </div>
+      </div>
+    </article>
+
+    <article #chartPanel class="chart-panel admin-card">
+      <div class="chart-header">
+        <div>
+          <h2>Column volume</h2>
+          <p>Daily moderation and appeal counts</p>
+        </div>
+      </div>
+
+      <div class="chart-wrap" *ngIf="overview && hasTrendData; else compactChartState">
+        <svg
+          class="compact-chart"
+          role="img"
+          aria-label="Moderation volume column chart"
+          [attr.viewBox]="'0 0 ' + compactChartWidth + ' ' + compactChartHeight">
+          <g class="grid-lines">
+            <line
+              *ngFor="let tick of columnYAxisTicks"
+              [attr.x1]="chartPadding.left"
+              [attr.x2]="compactChartWidth - chartPadding.right"
+              [attr.y1]="yForCompactValue(tick, columnMaxValue)"
+              [attr.y2]="yForCompactValue(tick, columnMaxValue)">
+            </line>
+          </g>
+
+          <g class="axis-labels y-labels">
+            <text
+              *ngFor="let tick of columnYAxisTicks"
+              [attr.x]="chartPadding.left - 10"
+              [attr.y]="yForCompactValue(tick, columnMaxValue) + 4">
+              {{ tick }}
+            </text>
+          </g>
+
+          <g *ngFor="let group of columnGroups; trackBy: trackByColumnGroup">
+            <rect
+              class="column-bar"
+              *ngFor="let bar of group.bars; trackBy: trackByMetric"
+              [attr.x]="bar.x"
+              [attr.y]="bar.y"
+              [attr.width]="bar.width"
+              [attr.height]="bar.height"
+              [attr.fill]="bar.color">
+              <title>{{ group.label }} · {{ bar.label }}: {{ bar.value }}</title>
+            </rect>
+          </g>
+
+          <g class="axis-labels x-labels">
+            <text
+              *ngFor="let label of compactXAxisLabels; trackBy: trackByLabel"
+              [attr.x]="label.x"
+              [attr.y]="compactChartHeight - 9">
+              {{ label.label }}
+            </text>
+          </g>
+        </svg>
+
+        <div class="chart-legend chart-legend--compact">
+          <span *ngFor="let metric of columnMetricDefinitions; trackBy: trackByMetric">
+            <i [style.background]="metric.color"></i>
+            {{ metric.label }}
+          </span>
+        </div>
+      </div>
+    </article>
+
+    <article #chartPanel class="chart-panel admin-card">
+      <div class="chart-header">
+        <div>
+          <h2>Risk histogram</h2>
+          <p>User risk-score distribution</p>
+        </div>
+      </div>
+
+      <div class="chart-wrap" *ngIf="riskUsers.length; else riskChartState">
+        <svg
+          class="compact-chart"
+          role="img"
+          aria-label="User risk score histogram"
+          [attr.viewBox]="'0 0 ' + compactChartWidth + ' ' + compactChartHeight">
+          <g class="grid-lines">
+            <line
+              *ngFor="let tick of histogramYAxisTicks"
+              [attr.x1]="chartPadding.left"
+              [attr.x2]="compactChartWidth - chartPadding.right"
+              [attr.y1]="yForCompactValue(tick, riskMaxBucketValue)"
+              [attr.y2]="yForCompactValue(tick, riskMaxBucketValue)">
+            </line>
+          </g>
+
+          <g class="axis-labels y-labels">
+            <text
+              *ngFor="let tick of histogramYAxisTicks"
+              [attr.x]="chartPadding.left - 10"
+              [attr.y]="yForCompactValue(tick, riskMaxBucketValue) + 4">
+              {{ tick }}
+            </text>
+          </g>
+
+          <g>
+            <rect
+              class="histogram-bar"
+              *ngFor="let bar of histogramBars; trackBy: trackByBucket"
+              [attr.x]="bar.x"
+              [attr.y]="bar.y"
+              [attr.width]="bar.width"
+              [attr.height]="bar.height">
+              <title>Risk {{ bar.label }}: {{ bar.count }} users</title>
+            </rect>
+          </g>
+
+          <g class="axis-labels x-labels">
+            <text
+              *ngFor="let bar of histogramBars; trackBy: trackByBucket"
+              [attr.x]="bar.x + bar.width / 2"
+              [attr.y]="compactChartHeight - 9">
+              {{ bar.label }}
+            </text>
+          </g>
+        </svg>
+      </div>
+    </article>
+  </section>
+
+  <ng-template #compactChartState>
+    <div class="chart-state chart-state--compact">
+      <strong>No volume yet.</strong>
+      <p>Daily moderation counts will appear after activity is recorded.</p>
+    </div>
+  </ng-template>
+
+  <ng-template #riskChartState>
+    <div class="chart-state chart-state--compact">
+      <strong>No risk data loaded.</strong>
+      <p>User risk buckets appear after the admin user list is available.</p>
+    </div>
+  </ng-template>
+</section>

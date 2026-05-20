@@ -1,0 +1,265 @@
+<section class="structure-page">
+  <header class="structure-header admin-card">
+    <div>
+      <span class="eyebrow">Club structure</span>
+      <h1>Departments</h1>
+      <p>Assign members, keep titles consistent, and watch the unassigned queue.</p>
+    </div>
+
+    <div class="structure-actions">
+      <button type="button" class="admin-button" *ngIf="canManageDepartments" (click)="openCreateDepartment()">
+        <app-admin-icon name="building" [size]="16"></app-admin-icon>
+        New department
+      </button>
+      <button type="button" class="admin-button secondary" (click)="refresh()" [disabled]="isLoading">
+        <app-admin-icon name="refresh" [size]="16"></app-admin-icon>
+        {{ isLoading ? 'Refreshing...' : 'Refresh' }}
+      </button>
+      <a class="admin-button ghost" *ngIf="canOpenBadges" routerLink="/admin/badges" queryParamsHandling="preserve">
+        <app-admin-icon name="badge" [size]="16"></app-admin-icon>
+        Badges
+      </a>
+    </div>
+  </header>
+
+  <p *ngIf="errorMessage" class="admin-alert error">{{ errorMessage }}</p>
+  <p *ngIf="actionMessage" class="admin-alert">{{ actionMessage }}</p>
+
+  <section class="structure-summary-grid" aria-label="Department summary">
+    <article class="structure-stat">
+      <span>Departments</span>
+      <strong>{{ departments.length }}</strong>
+    </article>
+    <article class="structure-stat">
+      <span>Assigned</span>
+      <strong>{{ assignedUserCount }}</strong>
+    </article>
+    <article class="structure-stat warning" [class.is-clear]="unassignedUsers.length === 0">
+      <span>Unassigned</span>
+      <strong>{{ unassignedUsers.length }}</strong>
+    </article>
+    <article class="structure-stat">
+      <span>Titles</span>
+      <strong>{{ badges.length }}</strong>
+    </article>
+  </section>
+
+  <app-modal-shell
+    *ngIf="isDepartmentEditorOpen && canManageDepartments"
+    size="md"
+    ariaLabelledBy="departmentEditorTitle"
+    (closed)="closeDepartmentEditor()">
+    <section class="department-editor department-editor--dialog">
+      <div class="panel-title">
+        <div>
+          <h2 id="departmentEditorTitle">{{ editingDepartmentId ? 'Edit department' : 'Create department' }}</h2>
+          <p>{{ editingDepartmentId ? 'Update the department name and responsibility.' : 'Add a club department, then assign members below.' }}</p>
+        </div>
+      </div>
+
+      <form class="department-editor-form" [formGroup]="departmentForm" (ngSubmit)="saveDepartment()">
+        <label class="admin-field">
+          <span>Name</span>
+          <input type="text" formControlName="name" placeholder="Media Department">
+        </label>
+
+        <label class="admin-field">
+          <span>Description</span>
+          <input type="text" formControlName="description" placeholder="What this department owns inside the club">
+        </label>
+
+        <div class="department-editor-actions">
+          <button type="button" class="admin-button ghost" (click)="closeDepartmentEditor()" [disabled]="isSaving">Cancel</button>
+          <button type="submit" class="admin-button" [disabled]="isSaving">
+            {{ isSaving ? 'Saving...' : editingDepartmentId ? 'Save changes' : 'Create' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  </app-modal-shell>
+
+  <div class="structure-grid">
+    <aside class="department-panel admin-card">
+      <div class="panel-title">
+        <div>
+          <h2>Departments</h2>
+          <p>Select one to manage its members.</p>
+        </div>
+        <span>{{ departments.length }}</span>
+      </div>
+
+      <div class="department-list" *ngIf="departments.length; else noDepartments">
+        <article
+          class="structure-row"
+          *ngFor="let department of departments; trackBy: trackByDepartmentId"
+          [class.active]="selectedDepartmentId === department.id"
+          (click)="selectDepartment(department)"
+          tabindex="0"
+          (keydown.enter)="selectDepartment(department)"
+          (keydown.space)="selectDepartment(department); $event.preventDefault()">
+          <div class="department-copy">
+            <strong>{{ department.name }}</strong>
+            <p>{{ department.description || 'No description yet.' }}</p>
+            <small>{{ department.userCount }} member{{ department.userCount === 1 ? '' : 's' }}</small>
+          </div>
+          <div class="row-actions" *ngIf="canManageDepartments">
+            <button
+              type="button"
+              class="admin-button secondary compact"
+              [attr.aria-label]="'Edit ' + department.name"
+              (click)="editDepartment(department); $event.stopPropagation()">
+              Edit
+            </button>
+            <button
+              type="button"
+              class="admin-button danger compact"
+              [attr.aria-label]="'Archive ' + department.name"
+              (click)="archiveDepartment(department); $event.stopPropagation()"
+              [disabled]="isSaving">
+              Archive
+            </button>
+          </div>
+        </article>
+      </div>
+
+      <ng-template #noDepartments>
+        <div class="admin-empty compact">
+          <strong>No departments yet.</strong>
+          <p>Create the first club department to start assigning members.</p>
+        </div>
+      </ng-template>
+    </aside>
+
+    <main class="member-management">
+      <section class="member-section member-section--primary admin-card">
+        <div class="panel-title">
+          <div>
+            <h2>Unassigned members</h2>
+            <p>{{ unassignedUsers.length ? 'Department changes save immediately.' : 'Every visible member has a department.' }}</p>
+          </div>
+          <span>{{ unassignedUsers.length }}</span>
+        </div>
+
+        <div class="member-table" *ngIf="unassignedUsers.length; else noUnassignedMembers">
+          <div class="member-table-head" aria-hidden="true">
+            <span>Member</span>
+            <span>Email</span>
+            <span>Department</span>
+            <span>Badge / Title</span>
+            <span>Actions</span>
+          </div>
+
+          <article class="member-row" *ngFor="let user of unassignedUsers; trackBy: trackByUserId" [class.is-saving]="updatingUserId === user.id">
+            <div class="member-cell member-identity">
+              <strong>{{ user.displayName || user.userName }}</strong>
+              <span>{{ user.email }} &middot; {{ user.role }}</span>
+            </div>
+
+            <span class="member-email">{{ user.email }}</span>
+
+            <div class="member-control-cell">
+              <span class="inline-label">Department</span>
+              <app-admin-select
+                [value]="user.departmentId || ''"
+                [disabled]="updatingUserId === user.id || !canEditMembership"
+                [options]="activeDepartmentOptions"
+                [placeholder]="'Department'"
+                [ariaLabel]="'Assign department for ' + (user.displayName || user.userName)"
+                (valueChange)="updateUserDepartment(user, $event)">
+              </app-admin-select>
+            </div>
+
+            <div class="member-control-cell">
+              <span class="inline-label">Badge</span>
+              <app-admin-select
+                [value]="user.badgeId"
+                [disabled]="updatingUserId === user.id || !canEditMembership"
+                [options]="getBadgeOptionsForUser(user)"
+                [placeholder]="'Badge'"
+                [ariaLabel]="'Change badge for ' + (user.displayName || user.userName)"
+                (valueChange)="updateUserBadge(user, $event)">
+              </app-admin-select>
+            </div>
+
+            <div class="member-actions">
+              <span class="saving-chip" *ngIf="updatingUserId === user.id">Saving...</span>
+              <a class="admin-button ghost compact" [routerLink]="['/admin/users', user.id]" queryParamsHandling="preserve" [attr.aria-label]="'Open ' + (user.displayName || user.userName)">Open</a>
+            </div>
+          </article>
+        </div>
+
+        <ng-template #noUnassignedMembers>
+          <div class="admin-empty compact">
+            <strong>No unassigned members.</strong>
+            <p>Every visible member already belongs to a department.</p>
+          </div>
+        </ng-template>
+      </section>
+
+      <section class="member-section admin-card">
+        <div class="panel-title">
+          <div>
+            <h2>{{ selectedDepartment?.name || 'Department members' }}</h2>
+            <p>{{ selectedDepartment ? 'Move members or update their profile title.' : 'Select a department to view members.' }}</p>
+          </div>
+          <span>{{ selectedDepartmentUsers.length }}</span>
+        </div>
+
+        <div class="member-table" *ngIf="selectedDepartmentUsers.length; else noDepartmentMembers">
+          <div class="member-table-head" aria-hidden="true">
+            <span>Member</span>
+            <span>Email</span>
+            <span>Department</span>
+            <span>Badge / Title</span>
+            <span>Actions</span>
+          </div>
+
+          <article class="member-row" *ngFor="let user of selectedDepartmentUsers; trackBy: trackByUserId" [class.is-saving]="updatingUserId === user.id">
+            <div class="member-cell member-identity">
+              <strong>{{ user.displayName || user.userName }}</strong>
+              <span>{{ user.email }} &middot; {{ user.role }}</span>
+            </div>
+
+            <span class="member-email">{{ user.email }}</span>
+
+            <div class="member-control-cell">
+              <span class="inline-label">Department</span>
+              <app-admin-select
+                [value]="user.departmentId || ''"
+                [disabled]="updatingUserId === user.id || !canEditMembership"
+                [options]="departmentOptions"
+                [placeholder]="'Department'"
+                [ariaLabel]="'Move department for ' + (user.displayName || user.userName)"
+                (valueChange)="updateUserDepartment(user, $event)">
+              </app-admin-select>
+            </div>
+
+            <div class="member-control-cell">
+              <span class="inline-label">Badge</span>
+              <app-admin-select
+                [value]="user.badgeId"
+                [disabled]="updatingUserId === user.id || !canEditMembership"
+                [options]="getBadgeOptionsForUser(user)"
+                [placeholder]="'Badge'"
+                [ariaLabel]="'Change badge for ' + (user.displayName || user.userName)"
+                (valueChange)="updateUserBadge(user, $event)">
+              </app-admin-select>
+            </div>
+
+            <div class="member-actions">
+              <span class="saving-chip" *ngIf="updatingUserId === user.id">Saving...</span>
+              <a class="admin-button ghost compact" [routerLink]="['/admin/users', user.id]" queryParamsHandling="preserve" [attr.aria-label]="'Open ' + (user.displayName || user.userName)">Open</a>
+            </div>
+          </article>
+        </div>
+
+        <ng-template #noDepartmentMembers>
+          <div class="admin-empty compact">
+            <strong>No members in this department.</strong>
+            <p>Select department values in the unassigned queue to add members here.</p>
+          </div>
+        </ng-template>
+      </section>
+    </main>
+  </div>
+</section>

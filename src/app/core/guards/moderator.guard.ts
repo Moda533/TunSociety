@@ -13,9 +13,11 @@ export class ModeratorGuard implements CanActivate {
     }
 
     return this.auth.syncCurrentUser().pipe(
-      map((user) => user && (user.role === 'Moderator' || user.role === 'Admin')
-        ? true
-        : this.router.createUrlTree(['/dashboard']))
+      map((user) => !user
+        ? this.router.createUrlTree(['/auth'])
+        : this.auth.canAccessModerationWorkspace(user)
+          ? true
+          : this.router.parseUrl(this.auth.getDefaultRoute(user.role)))
     );
   }
 }

@@ -1,0 +1,190 @@
+<section class="event-detail-page">
+  <button type="button" class="back-button" routerLink="/dashboard/feed">Back to feed</button>
+
+  <p class="dashboard-hint" *ngIf="isLoading">Loading event...</p>
+  <p class="dashboard-error" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+  <article class="event-detail" *ngIf="event as event">
+    <div class="event-hero" *ngIf="event.imageUrl; else eventFallbackHero">
+      <img [src]="event.imageUrl" [attr.alt]="event.title">
+    </div>
+
+    <ng-template #eventFallbackHero>
+      <div class="event-hero event-hero--empty">
+        <span>{{ event.startsAtUtc | date: 'MMM d' }}</span>
+      </div>
+    </ng-template>
+
+    <div class="event-content">
+      <div class="event-main">
+        <p class="event-kicker">Event</p>
+        <h1>{{ event.title }}</h1>
+        <div class="event-meta">
+          <span>{{ event.startsAtUtc | date: 'fullDate' }}</span>
+          <span>{{ event.startsAtUtc | date: 'shortTime' }}</span>
+          <span>{{ event.location }}</span>
+        </div>
+        <p class="event-description">{{ event.description }}</p>
+
+        <div class="event-detail-actions" aria-label="Event actions">
+          <button
+            type="button"
+            class="event-detail-icon-action event-detail-icon-action--like"
+            [class.active]="isEventLiked()"
+            [attr.aria-pressed]="isEventLiked()"
+            [attr.aria-label]="isEventLiked() ? 'Unlike event' : 'Like event'"
+            [attr.title]="isEventLiked() ? 'Unlike event' : 'Like event'"
+            (click)="toggleEventLike()">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                *ngIf="!isEventLiked()"
+                d="M12 20.2 10.9 19.2C6.3 15.1 3.2 12.3 3.2 8.7 3.2 5.9 5.3 3.8 8.1 3.8c1.6 0 3.1.7 3.9 1.9.8-1.2 2.3-1.9 3.9-1.9 2.8 0 4.9 2.1 4.9 4.9 0 3.6-3.1 6.4-7.7 10.5L12 20.2z"></path>
+              <path
+                *ngIf="isEventLiked()"
+                d="M12 20.4 10.7 19.3C5.7 14.8 2.4 11.8 2.4 8.1 2.4 5 4.8 2.8 7.9 2.8c1.9 0 3.4.8 4.1 2 .7-1.2 2.2-2 4.1-2 3.1 0 5.5 2.2 5.5 5.3 0 3.7-3.3 6.7-8.3 11.2L12 20.4z"></path>
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            class="event-detail-icon-action"
+            aria-label="Comment on event"
+            title="Comment"
+            (click)="focusDiscussion()">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4.5 5.8h15v9.2a1.8 1.8 0 0 1-1.8 1.8H10l-4.2 3V16.8H4.5a1.8 1.8 0 0 1-1.8-1.8V7.6a1.8 1.8 0 0 1 1.8-1.8z"></path>
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            class="event-detail-icon-action"
+            aria-label="Share event"
+            title="Share"
+            (click)="shareEvent()">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M15.5 8.5 8.2 12l7.3 3.5"></path>
+              <circle cx="6.2" cy="12" r="2.2"></circle>
+              <circle cx="17.8" cy="6.8" r="2.2"></circle>
+              <circle cx="17.8" cy="17.2" r="2.2"></circle>
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            class="event-detail-icon-action event-detail-icon-action--interested"
+            [class.active]="isInterested()"
+            [attr.aria-pressed]="isInterested()"
+            aria-label="Interested in event"
+            title="Interested"
+            (click)="setParticipation('Interested')">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3.8l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16.1l-4.8 2.6.9-5.4-3.9-3.8 5.4-.8L12 3.8z"></path>
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            class="event-detail-icon-action event-detail-icon-action--going"
+            [class.active]="isGoing()"
+            [attr.aria-pressed]="isGoing()"
+            aria-label="Going to event"
+            title="Going"
+            (click)="setParticipation('Going')">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 4.5v3"></path>
+              <path d="M17 4.5v3"></path>
+              <path d="M4.8 8h14.4"></path>
+              <path d="M6.2 6h11.6a1.7 1.7 0 0 1 1.7 1.7v10.1a1.7 1.7 0 0 1-1.7 1.7H6.2a1.7 1.7 0 0 1-1.7-1.7V7.7A1.7 1.7 0 0 1 6.2 6z"></path>
+              <path d="M8.2 13.4l2.2 2.2 5.1-5.1"></path>
+            </svg>
+          </button>
+
+          <button type="button" class="event-action danger" *ngIf="canModerateEvents" (click)="deleteEvent()">Delete</button>
+        </div>
+        <p class="event-action-message" *ngIf="actionMessage">{{ actionMessage }}</p>
+
+        <section id="event-discussion" class="event-panel discussion-panel">
+          <header>
+            <h2>Discussion</h2>
+            <span>{{ event.commentsCount }} comments</span>
+          </header>
+
+          <form class="comment-form" (ngSubmit)="submitComment()">
+            <input id="event-comment-input" type="text" [formControl]="commentControl" placeholder="Write a comment">
+            <button type="submit" [disabled]="isSubmittingComment || !commentControl.value.trim()">Post</button>
+          </form>
+          <p class="dashboard-error" *ngIf="commentErrorMessage">{{ commentErrorMessage }}</p>
+
+          <div class="comment-list" *ngIf="event.comments.length; else noComments">
+            <article class="comment-item" *ngFor="let comment of event.comments; trackBy: trackByComment">
+              <strong>{{ comment.authorName }}</strong>
+              <span>{{ comment.createdAtUtc | date: 'short' }}</span>
+              <p>{{ comment.content }}</p>
+            </article>
+          </div>
+
+          <ng-template #noComments>
+            <p class="empty-copy">No discussion yet.</p>
+          </ng-template>
+        </section>
+      </div>
+
+      <aside class="event-side">
+        <section class="event-panel">
+          <h2>Participation</h2>
+          <div class="event-stats">
+            <span><strong>{{ event.goingCount }}</strong> Going</span>
+            <span><strong>{{ event.interestedCount }}</strong> Interested</span>
+          </div>
+
+          <div class="participant-list" *ngIf="event.participants.length; else noParticipants">
+            <div class="participant" *ngFor="let participant of event.participants; trackBy: trackByParticipant">
+              <span>{{ participant.displayName.charAt(0).toUpperCase() }}</span>
+              <div>
+                <strong>{{ participant.displayName }}</strong>
+                <small>{{ participant.status }} &middot; {{ participant.role }}</small>
+              </div>
+            </div>
+          </div>
+
+          <ng-template #noParticipants>
+            <p class="empty-copy">No participants yet.</p>
+          </ng-template>
+        </section>
+
+        <section class="event-panel evaluation-panel">
+          <h2>Evaluation</h2>
+          <div class="event-stats">
+            <span><strong>{{ event.averageRating || 0 }}</strong> Avg rating</span>
+            <span><strong>{{ event.evaluationCount }}</strong> Ratings</span>
+          </div>
+
+          <form class="evaluation-form" *ngIf="isPastEvent; else evaluationLocked" (ngSubmit)="submitEvaluation()">
+            <div class="rating-row" role="radiogroup" aria-label="Event rating">
+              <button
+                type="button"
+                *ngFor="let rating of ratingOptions; trackBy: trackByRating"
+                [class.active]="selectedRating >= rating"
+                [attr.aria-pressed]="selectedRating === rating"
+                [attr.aria-label]="'Rate ' + rating + ' out of 5'"
+                (click)="selectedRating = rating">
+                ★
+              </button>
+            </div>
+
+            <textarea rows="3" [formControl]="feedbackControl" placeholder="Optional feedback"></textarea>
+            <button type="submit" [disabled]="selectedRating < 1 || isSubmittingEvaluation">
+              {{ event.myRating ? 'Update rating' : 'Submit rating' }}
+            </button>
+            <p class="dashboard-error" *ngIf="evaluationErrorMessage">{{ evaluationErrorMessage }}</p>
+          </form>
+
+          <ng-template #evaluationLocked>
+            <p class="empty-copy">Evaluation opens after the event.</p>
+          </ng-template>
+        </section>
+      </aside>
+    </div>
+  </article>
+</section>

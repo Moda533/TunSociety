@@ -1,0 +1,64 @@
+<div
+  class="admin-select"
+  cdkOverlayOrigin
+  #overlayOrigin="cdkOverlayOrigin"
+  [class.admin-select--open]="isOpen"
+  [class.admin-select--disabled]="isDisabled">
+  <button
+    #triggerButton
+    type="button"
+    class="admin-select__trigger"
+    [disabled]="isDisabled"
+    [attr.aria-label]="ariaLabel"
+    [attr.aria-expanded]="isOpen"
+    aria-haspopup="listbox"
+    (click)="toggleMenu()"
+    (keydown)="onTriggerKeydown($event)">
+    <span class="admin-select__value" [class.admin-select__value--placeholder]="!selectedOption">
+      {{ selectedOption?.label || placeholder }}
+    </span>
+
+    <span class="admin-select__icon" aria-hidden="true">
+      <svg viewBox="0 0 20 20" focusable="false">
+        <path d="M5.75 7.75 10 12.25 14.25 7.75"></path>
+      </svg>
+    </span>
+  </button>
+</div>
+
+<ng-template
+  cdkConnectedOverlay
+  [cdkConnectedOverlayOrigin]="overlayOrigin"
+  [cdkConnectedOverlayOpen]="isOpen"
+  [cdkConnectedOverlayPositions]="overlayPositions"
+  [cdkConnectedOverlayPush]="true"
+  [cdkConnectedOverlayViewportMargin]="12"
+  (attach)="onOverlayAttach()"
+  (detach)="onOverlayDetach()"
+  (overlayOutsideClick)="closeMenu(false)"
+  (positionChange)="onPositionChange($event)">
+  <div
+    class="admin-select__menu"
+    [class.admin-select__menu--above]="isOpenAbove"
+    [style.width.px]="overlayWidth"
+    role="listbox"
+    [attr.aria-label]="ariaLabel">
+    <button
+      #optionButton
+      type="button"
+      class="admin-select__option"
+      *ngFor="let option of options; let index = index"
+      [disabled]="option.disabled"
+      [class.is-selected]="option.value === currentValue"
+      [attr.aria-selected]="option.value === currentValue"
+      role="option"
+      (click)="selectOption(option)"
+      (keydown)="onOptionKeydown($event, index)">
+      <span>{{ option.label }}</span>
+
+      <svg *ngIf="option.value === currentValue" class="admin-select__check" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+        <path d="M5 10.25 8.2 13.5 15 6.75"></path>
+      </svg>
+    </button>
+  </div>
+</ng-template>
