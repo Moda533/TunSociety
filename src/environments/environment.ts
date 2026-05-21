@@ -4,5 +4,7 @@ const useDirectLocalApi =
 
 export const environment = {
   production: false,
-  apiBaseUrl: useDirectLocalApi ? 'http://localhost:5000/api' : '/api'
+  apiBaseUrl: useDirectLocalApi
+    ? 'http://localhost:5000/api'
+    : 'https://tunsocietyapi.onrender.com/api'
 };

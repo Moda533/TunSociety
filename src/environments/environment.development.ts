@@ -1,4 +1,10 @@
+const useDirectLocalApi =
+  typeof window !== 'undefined' &&
+  window.location.hostname === 'localhost';
+
 export const environment = {
   production: false,
-  apiBaseUrl: 'http://lynxerp2024-001-site10.ktempurl.com'
+  apiBaseUrl: useDirectLocalApi
+    ? 'http://localhost:5000/api'
+    : 'https://tunsocietyapi.onrender.com/api'
 };
