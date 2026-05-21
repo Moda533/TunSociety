@@ -17,14 +17,14 @@ export class AuthService {
   constructor(private readonly api: ApiService) {}
 
   register(payload: RegisterRequest) {
-    return this.api.post<AuthResponse>('auth/register', payload).pipe(
+    return this.api.postJson<AuthResponse>('auth/register', payload).pipe(
       timeout(this.requestTimeoutMs),
       tap((response) => this.persistSession(response))
     );
   }
 
   login(payload: LoginRequest) {
-    return this.api.post<AuthResponse>('auth/login', payload).pipe(
+    return this.api.postJson<AuthResponse>('auth/login', payload).pipe(
       timeout(this.requestTimeoutMs),
       tap((response) => this.persistSession(response))
     );

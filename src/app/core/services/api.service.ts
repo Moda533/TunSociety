@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { environment } from '../../../environments/environment';
 
@@ -14,6 +14,14 @@ export class ApiService {
 
   post<T>(path: string, body: unknown) {
     return this.http.post<T>(this.buildUrl(path), body);
+  }
+
+  postJson<T>(path: string, body: unknown) {
+    return this.http.post<T>(this.buildUrl(path), body, {
+      headers: new HttpHeaders({
+        'Content-Type': 'application/json'
+      })
+    });
   }
 
   put<T>(path: string, body: unknown) {
