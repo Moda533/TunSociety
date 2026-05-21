@@ -1,12 +1,15 @@
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, catchError, finalize, of, shareReplay, tap, timeout } from 'rxjs';
 import { ApiService } from './api.service';
 import { ADMIN_WORKSPACE_PERMISSIONS, MODERATION_WORKSPACE_PERMISSIONS, PERMISSIONS } from '../permissions';
 import { AuthResponse, LoginRequest, RegisterRequest } from '../../features/auth/models/auth.model';
 import { User } from '../../features/user/models/user.model';
+import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
+  private readonly apiUrl = environment.apiUrl.replace(/\/+$/, '');
   private readonly requestTimeoutMs = 15000;
   private readonly tokenKey = 'ts_token';
   private readonly userKey = 'ts_user';
@@ -14,17 +17,28 @@ export class AuthService {
   private syncRequest$?: Observable<User | null>;
   readonly user$ = this.userSubject.asObservable();
 
-  constructor(private readonly api: ApiService) {}
+  constructor(
+    private readonly api: ApiService,
+    private readonly http: HttpClient
+  ) {}
 
   register(payload: RegisterRequest) {
-    return this.api.postJson<AuthResponse>('auth/register', payload).pipe(
+    return this.http.post<AuthResponse>(`${this.apiUrl}/api/auth/register`, payload, {
+      headers: new HttpHeaders({
+        'Content-Type': 'application/json'
+      })
+    }).pipe(
       timeout(this.requestTimeoutMs),
       tap((response) => this.persistSession(response))
     );
   }
 
   login(payload: LoginRequest) {
-    return this.api.postJson<AuthResponse>('auth/login', payload).pipe(
+    return this.http.post<AuthResponse>(`${this.apiUrl}/api/auth/login`, payload, {
+      headers: new HttpHeaders({
+        'Content-Type': 'application/json'
+      })
+    }).pipe(
       timeout(this.requestTimeoutMs),
       tap((response) => this.persistSession(response))
     );

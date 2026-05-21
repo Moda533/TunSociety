@@ -2796,7 +2796,7 @@ export class FeedPageComponent implements OnInit, OnDestroy {
     if (error && typeof error === 'object' && 'status' in error) {
       const status = (error as { status?: number }).status;
       if (status === 0) {
-        return 'API is unreachable. Start backend on http://localhost:5000.';
+        return 'API is unreachable. Please try again later.';
       }
 
       if (status === 423) {

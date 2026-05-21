@@ -114,7 +114,7 @@ export class AuthComponent implements OnInit, AfterViewInit {
         error: (error: unknown) => {
           this.updateView(() => {
             if (this.isNetworkOrTimeoutError(error)) {
-              this.errorMessage = 'API is not reachable. Start backend on http://localhost:5000.';
+              this.errorMessage = 'API is not reachable. Please try again later.';
               return;
             }
 
@@ -172,7 +172,7 @@ export class AuthComponent implements OnInit, AfterViewInit {
         error: (error: unknown) => {
           this.updateView(() => {
             if (this.isNetworkOrTimeoutError(error)) {
-              this.errorMessage = 'API is not reachable. Start backend on http://localhost:5000.';
+              this.errorMessage = 'API is not reachable. Please try again later.';
               return;
             }
 
@@ -242,7 +242,7 @@ export class AuthComponent implements OnInit, AfterViewInit {
         error: (error: unknown) => {
           this.updateView(() => {
             if (this.isNetworkOrTimeoutError(error)) {
-              this.errorMessage = 'API is not reachable. Start backend on http://localhost:5000.';
+              this.errorMessage = 'API is not reachable. Please try again later.';
               return;
             }
 

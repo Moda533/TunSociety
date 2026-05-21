@@ -30,7 +30,7 @@ export class HttpErrorInterceptor implements HttpInterceptor {
     if (error.status === 0) {
       this.feedback.show({
         kind: 'error',
-        text: 'API is unreachable. Start backend on http://localhost:5000.'
+        text: 'API is unreachable. Please try again later.'
       });
       return;
     }

@@ -4,7 +4,7 @@ import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
-  private readonly baseUrl = environment.apiBaseUrl.replace(/\/+$/, '');
+  private readonly baseUrl = environment.apiUrl.replace(/\/+$/, '');
 
   constructor(private readonly http: HttpClient) {}
 
@@ -34,6 +34,6 @@ export class ApiService {
 
   private buildUrl(path: string) {
     const normalized = path.replace(/^\/+/, '');
-    return `${this.baseUrl}/${normalized}`;
+    return `${this.baseUrl}/api/${normalized}`;
   }
 }
